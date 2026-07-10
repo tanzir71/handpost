@@ -1,0 +1,3 @@
+import { describe,expect,it } from 'vitest';
+import { jitterDate,thinkDelayMs,typingDelayMs } from '../../src/main/engine/humanizer';
+describe('humanizer statistical bounds',()=>{it('keeps typing within 60–140 WPM',()=>{for(let i=0;i<1000;i++){const delay=typingDelayMs();expect(delay).toBeGreaterThanOrEqual(60_000/(140*5));expect(delay).toBeLessThanOrEqual(60_000/(60*5));}});it('thinks for 1–4 seconds',()=>{for(let i=0;i<100;i++)expect(thinkDelayMs()).toBeGreaterThanOrEqual(1000);expect(thinkDelayMs(()=>1)).toBe(4000);});it('jitters within ±90 seconds',()=>{const date=new Date('2026-01-01T00:00:00Z');expect(jitterDate(date,()=>0).toISOString()).toBe('2025-12-31T23:58:30.000Z');expect(jitterDate(date,()=>1).toISOString()).toBe('2026-01-01T00:01:30.000Z');});});

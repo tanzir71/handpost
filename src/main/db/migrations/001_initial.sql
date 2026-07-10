@@ -1,0 +1,10 @@
+CREATE TABLE IF NOT EXISTS accounts (id INTEGER PRIMARY KEY, platform TEXT NOT NULL UNIQUE, display_name TEXT NOT NULL, profile_dir TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'unknown', last_checked_at TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY, base_text TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, status TEXT NOT NULL DEFAULT 'draft');
+CREATE TABLE IF NOT EXISTS post_targets (id INTEGER PRIMARY KEY, post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE, account_id INTEGER NOT NULL REFERENCES accounts(id), override_text TEXT, first_comment TEXT, scheduled_at_utc TEXT, jittered_at_utc TEXT, status TEXT NOT NULL DEFAULT 'scheduled', attempt_count INTEGER NOT NULL DEFAULT 0, published_url TEXT, error_code TEXT, error_detail TEXT);
+CREATE TABLE IF NOT EXISTS media (id INTEGER PRIMARY KEY, post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE, path TEXT NOT NULL, kind TEXT NOT NULL, width INTEGER, height INTEGER, duration_s REAL, order_idx INTEGER NOT NULL DEFAULT 0, alt_text TEXT);
+CREATE TABLE IF NOT EXISTS publish_attempts (id INTEGER PRIMARY KEY, target_id INTEGER NOT NULL REFERENCES post_targets(id) ON DELETE CASCADE, started_at TEXT NOT NULL, finished_at TEXT, outcome TEXT, step_log_json TEXT NOT NULL DEFAULT '[]', screenshot_path TEXT, error_class TEXT);
+CREATE TABLE IF NOT EXISTS queue_slots (id INTEGER PRIMARY KEY, account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE, weekday INTEGER NOT NULL CHECK(weekday BETWEEN 0 AND 6), time_local TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS templates (id INTEGER PRIMARY KEY, name TEXT NOT NULL, body TEXT NOT NULL, variables_json TEXT NOT NULL DEFAULT '[]');
+CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_targets_due ON post_targets(status, jittered_at_utc);
+CREATE INDEX IF NOT EXISTS idx_attempts_target ON publish_attempts(target_id);

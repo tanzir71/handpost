@@ -1,0 +1,13 @@
+node_modules/
+dist/
+coverage/
+*.db
+*.db-shm
+*.db-wal
+relay-data/
+tests/fixtures/_drift/
+playwright-report/
+proof/
+relay-ui.png
+.env*
+!.env.example
