@@ -1,6 +1,22 @@
-import { createServer,type Server } from 'node:http';
+import express from 'express';
+import type { Server } from 'node:http';
+
 const posts:Array<{id:number;text:string}>=[];
 const page=(body:string)=>`<!doctype html><html><body>${body}</body></html>`;
-export async function startMockSocial(port=4178):Promise<Server>{posts.length=0;const server=createServer((request,response)=>{const url=new URL(request.url??'/',`http://127.0.0.1:${port}`);const session=request.headers.cookie?.includes('mock_session=ok');if(request.method==='POST'){let body='';request.on('data',chunk=>body+=chunk);request.on('end',()=>{if(url.pathname==='/login'){response.writeHead(302,{'set-cookie':'mock_session=ok; Path=/; Max-Age=2592000; HttpOnly; SameSite=Lax','location':'/'});response.end();return;}if(url.pathname==='/compose'&&session){const match=body.match(/name="text"\r?\n\r?\n([\s\S]*?)\r?\n--/);const text=request.headers['content-type']?.includes('multipart')?(match?.[1]??''):new URLSearchParams(body).get('text')??'';posts.unshift({id:posts.length+1,text});response.writeHead(200,{'content-type':'text/html'});response.end(page('<div data-relay="success">Published</div>'));return;}response.writeHead(401);response.end('unauthorized');});return;}response.setHeader('content-type','text/html');if(!session){response.end(page('<form method="post" action="/login" data-relay="login"><label>User<input name="user"></label><button type="submit">Log in</button></form>'));return;}if(url.pathname==='/compose'){response.end(page('<nav data-relay="logged-in" aria-label="Profile"></nav><main data-relay="composer"><form method="post" action="/compose" enctype="multipart/form-data"><textarea name="text" data-relay="text"></textarea><input name="media" type="file"><button type="submit" data-relay="submit">Post</button></form></main>'));return;}if(url.pathname==='/profile'){response.end(page(`<nav data-relay="logged-in" aria-label="Profile"></nav>${posts.map(post=>`<article data-relay="post"><p>${escape(post.text)}</p><a href="/posts/${post.id}">permalink</a></article>`).join('')}`));return;}response.end(page('<nav data-relay="logged-in" aria-label="Profile"></nav><a href="/compose">Compose</a>'));});await new Promise<void>((resolve,reject)=>{server.once('error',reject);server.listen(port,'127.0.0.1',()=>resolve());});return server;}
+
+export async function startMockSocial(port=4178):Promise<Server>{
+ posts.length=0;const app=express();app.use(express.raw({type:()=>true,limit:'20mb'}));
+ app.use((request,response)=>{const session=request.headers.cookie?.includes('mock_session=ok');
+  if(request.method==='POST'&&request.path==='/login'){response.setHeader('set-cookie','mock_session=ok; Path=/; Max-Age=2592000; HttpOnly; SameSite=Lax');response.redirect(302,'/');return;}
+  if(request.method==='POST'&&request.path==='/compose'&&session){const body=Buffer.isBuffer(request.body)?request.body.toString('utf8'):'';const match=body.match(/name="text"\r?\n\r?\n([\s\S]*?)\r?\n--/);const text=request.headers['content-type']?.includes('multipart')?(match?.[1]??''):new URLSearchParams(body).get('text')??'';posts.unshift({id:posts.length+1,text});response.send(page('<div data-relay="success">Published</div>'));return;}
+  if(request.method==='POST'){response.status(401).send('unauthorized');return;}
+  if(!session){response.send(page('<form method="post" action="/login" data-relay="login"><label>User<input name="user"></label><button type="submit">Log in</button></form>'));return;}
+  if(request.path==='/compose'){response.send(page('<nav data-relay="logged-in" aria-label="Profile"></nav><main data-relay="composer"><form method="post" action="/compose" enctype="multipart/form-data"><textarea name="text" data-relay="text"></textarea><input name="media" type="file"><button type="submit" data-relay="submit">Post</button></form></main>'));return;}
+  if(request.path==='/profile'){response.send(page(`<nav data-relay="logged-in" aria-label="Profile"></nav>${posts.map(post=>`<article data-relay="post"><p>${escape(post.text)}</p><a href="/posts/${post.id}">permalink</a></article>`).join('')}`));return;}
+  response.send(page('<nav data-relay="logged-in" aria-label="Profile"></nav><a href="/compose">Compose</a>'));
+ });
+ return await new Promise<Server>((resolve,reject)=>{const server=app.listen(port,'127.0.0.1',()=>resolve(server));server.once('error',reject);});
+}
+
 export async function stopMockSocial(server:Server):Promise<void>{await new Promise<void>((resolve,reject)=>server.close(error=>error?reject(error):resolve()));}
-function escape(value:string){return value.replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]!));}
+function escape(value:string){return value.replace(/[&<>"']/g,character=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]!));}

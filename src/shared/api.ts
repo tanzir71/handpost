@@ -8,5 +8,6 @@ export interface RelayApi {
  saveTemplate(input:{name:string;body:string;variables:string[]}):Promise<number>; saveSetting(input:{key:string;value:string}):Promise<void>; csvImport(input:{csv:string;dryRun:boolean}):Promise<any[]>;
  saveAccountSettings(input:{accountId:number;platform:PlatformId;dailyCap:number;headless:boolean;slots:Array<{weekday:number;timeLocal:string}>}):Promise<void>;
  exportData():Promise<string>; importData():Promise<void>; openManual(targetId:number):Promise<void>;
+ openExternal(url:string):Promise<void>;
  readArtifact(path:string):Promise<string>;
 }

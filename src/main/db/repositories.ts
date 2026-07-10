@@ -24,7 +24,7 @@ export class Repositories {
     incrementAttempt: (id:number) => this.db.prepare('UPDATE post_targets SET attempt_count=attempt_count+1 WHERE id=?').run(id),
     delete: (id:number) => this.db.prepare('DELETE FROM post_targets WHERE id=?').run(id)
   };
-  get media() { return crud(this.db,'media',['post_id','path','kind','width','height','duration_s','order_idx','alt_text']); }
+  get media() { return crud(this.db,'media',['post_id','path','kind','width','height','duration_s','size_bytes','order_idx','alt_text']); }
   get attempts() { return crud(this.db,'publish_attempts',['target_id','started_at','finished_at','outcome','step_log_json','screenshot_path','error_class']); }
   get slots() { return crud(this.db,'queue_slots',['account_id','weekday','time_local']); }
   get templates() { return crud(this.db,'templates',['name','body','variables_json']); }

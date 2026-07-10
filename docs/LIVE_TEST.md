@@ -12,7 +12,7 @@ These checks create real public posts. Run them manually; never put credentials 
 
 ## Platform flows
 
-- [ ] X: text-only post under 280 weighted characters; then one image with alt text; finally a four-image post.
+- [ ] X: text-only post under 280 weighted characters; a two-post thread; then one image with alt text; finally a four-image post.
 - [ ] LinkedIn: text-only post; confirm the activity permalink and proof.
 - [ ] Bluesky: text-only post and up to four images.
 - [ ] Threads: text-only post; confirm the own-profile permalink.

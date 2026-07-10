@@ -23,12 +23,12 @@ Useful commands:
 
 Relay never automates login. Connect opens a visible persistent Chrome profile and the owner completes login and 2FA. Cookies are never exported to SQLite or logs. Global publish concurrency is one; same-platform publishes have cooldowns, configurable daily caps, jitter, and a 24-hour detection circuit breaker.
 
-Drafts retain their selected targets, platform-specific text and first comments, wizard options, and per-platform media alt text. Queue and History expose step logs and local proof screenshots; failed targets can open the platform composer with the post text copied to the clipboard.
+Drafts retain their selected targets, platform-specific text and first comments, X thread continuations, wizard options, and per-platform media alt text. Queue and History expose step logs, permalinks, and local proof screenshots; failed targets can open the platform composer with the post text copied to the clipboard. Export archives include media and History evidence, but never browser profiles or cookies.
 
 ## Honest caveats
 
 - **Terms of service:** automated posting through web UIs violates most platforms’ terms even at human volume. A challenge, action block, or account loss is possible. The circuit breaker and manual fallback reduce—not remove—this risk, and Relay never hides detection events.
-- **UI drift:** platform selectors will change. Centralized selectors, sanitized fixtures, and contract tests make repair localized. Budget for roughly one adapter repair per month.
+- **UI drift:** platform selectors will change. Per-platform selector modules, sanitized fixtures, and contract tests make repair localized. Budget for roughly one adapter repair per month.
 - **Instagram and TikTok:** these are the fragile frontier. Relay uses conservative pacing and can hand content back to the owner through “Open manually” when reliable automation is unavailable.
 - Live platform publishing is intentionally excluded from CI. Only the owner runs [the live checklist](docs/LIVE_TEST.md), because it uses real sessions and creates public posts.
 

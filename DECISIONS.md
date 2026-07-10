@@ -12,4 +12,4 @@ Per-platform wizard fields and media alt-text overrides are stored in `post_targ
 
 ## 2026-07-11 - Persistent browser lifecycle
 
-The scheduler reuses one persistent context per platform for the application lifetime and closes all contexts during application shutdown. Restarting a browser after every post can discard session cookies and defeats persistent-profile behavior; serialization and pacing remain scheduler concerns, while lifecycle ownership remains in `BrowserEngine`.
+The scheduler reuses one named persistent context per platform across a queued publishing batch, then closes it when the global queue becomes idle; application shutdown also drains the queue and closes any login/manual contexts. This satisfies the idle-memory target while retaining the persistent on-disk Chrome profile across batches. MockSocial uses an expiring persistent cookie so restart survival is covered without relying on session-only cookie behavior.
