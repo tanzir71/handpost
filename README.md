@@ -23,6 +23,8 @@ Useful commands:
 
 Relay never automates login. Connect opens a visible persistent Chrome profile and the owner completes login and 2FA. Cookies are never exported to SQLite or logs. Global publish concurrency is one; same-platform publishes have cooldowns, configurable daily caps, jitter, and a 24-hour detection circuit breaker.
 
+Drafts retain their selected targets, platform-specific text and first comments, wizard options, and per-platform media alt text. Queue and History expose step logs and local proof screenshots; failed targets can open the platform composer with the post text copied to the clipboard.
+
 ## Honest caveats
 
 - **Terms of service:** automated posting through web UIs violates most platforms’ terms even at human volume. A challenge, action block, or account loss is possible. The circuit breaker and manual fallback reduce—not remove—this risk, and Relay never hides detection events.

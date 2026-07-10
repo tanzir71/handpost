@@ -14,5 +14,6 @@ export class BrowserEngine {
     this.contexts.set(platform,ctx); ctx.on('close',()=>this.contexts.delete(platform)); return ctx;
   }
   async close(platform?:PlatformId):Promise<void>{ if(platform){await this.contexts.get(platform)?.close();this.contexts.delete(platform);return;} await Promise.all([...this.contexts.values()].map(c=>c.close()));this.contexts.clear(); }
+  activeContextCount():number{return this.contexts.size;}
   async fingerprint(platform:PlatformId):Promise<{webdriver:boolean;cdpLeak:boolean}>{ const ctx=await this.context(platform);const page=await ctx.newPage();await page.goto('data:text/html,<title>Relay fingerprint</title>');const result=await page.evaluate(()=>({webdriver:Boolean(navigator.webdriver),cdpLeak:['cdc_adoQpoasnfa76pfcZLmcfl_Array','__playwright__binding__'].some(k=>k in window)}));await page.close();return result; }
 }

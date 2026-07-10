@@ -6,7 +6,7 @@ export type TargetStatus = 'scheduled' | 'publishing' | 'published' | 'unverifie
 export type ErrorClass = 'transient' | 'session' | 'content' | 'ui_drift' | 'suspected_detection';
 export type SessionState = 'ok' | 'logged_out' | 'challenged';
 export interface CapabilityManifest { platform: PlatformId; label: string; maxChars: number; maxMedia: number; mediaKinds: Array<'image'|'video'>; maxVideoSeconds?: number; maxFileBytes?: number; warnings?: Array<{at:number; message:string}>; conservative?: boolean; }
-export interface RenderedPost { text: string; firstComment?: string | null; media: MediaInput[]; }
+export interface RenderedPost { text: string; firstComment?: string | null; media: MediaInput[]; options?: Record<string,string|boolean>; artifactDir?: string; }
 export interface MediaInput { path: string; kind: 'image'|'video'; altText?: string | null; sizeBytes?:number; width?:number; height?:number; durationS?:number; }
 export interface PublishResult { submitted: boolean; signal?: string; }
 export interface Verification { found: boolean; url?: string; screenshotPath?: string; }

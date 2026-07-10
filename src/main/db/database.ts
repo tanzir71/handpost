@@ -10,12 +10,6 @@ export function openDatabase(path = ':memory:'): RelayDatabase {
 }
 export function migrate(db: RelayDatabase): void {
   db.exec('CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)');
-  const version = 1;
-  if (!db.prepare('SELECT 1 FROM schema_migrations WHERE version=?').get(version)) {
-    const runtimeDir=typeof __dirname==='string'?__dirname:process.cwd();
-    const candidates = [join(runtimeDir,'migrations','001_initial.sql'), join(process.cwd(),'src/main/db/migrations/001_initial.sql')];
-    const file = candidates.find(p => { try { readFileSync(p); return true; } catch { return false; } });
-    if (!file) throw new Error('Migration 001_initial.sql not found');
-    db.transaction(() => { db.exec(readFileSync(file,'utf8')); db.prepare('INSERT INTO schema_migrations(version) VALUES (?)').run(version); })();
-  }
+  const runtimeDir=typeof __dirname==='string'?__dirname:process.cwd();
+  for(const [version,name] of [[1,'001_initial.sql'],[2,'002_target_options.sql'],[3,'003_media_size.sql']] as const){if(db.prepare('SELECT 1 FROM schema_migrations WHERE version=?').get(version))continue;const candidates=[join(runtimeDir,'migrations',name),join(process.cwd(),'src/main/db/migrations',name)];const file=candidates.find(path=>{try{readFileSync(path);return true;}catch{return false;}});if(!file)throw new Error(`Migration ${name} not found`);db.transaction(()=>{db.exec(readFileSync(file,'utf8'));db.prepare('INSERT INTO schema_migrations(version) VALUES (?)').run(version);})();}
 }

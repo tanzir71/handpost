@@ -14,7 +14,7 @@
     "test": "cross-env ELECTRON_RUN_AS_NODE=1 electron node_modules/vitest/vitest.mjs run tests/unit",
     "contract": "cross-env ELECTRON_RUN_AS_NODE=1 electron node_modules/vitest/vitest.mjs run tests/contract",
     "e2e-lite": "cross-env ELECTRON_RUN_AS_NODE=1 electron node_modules/vitest/vitest.mjs run tests/e2e",
-    "check": "npm run lint && npm run typecheck && npm run test && npm run contract && npm run e2e-lite",
+    "check": "npm run lint && npm run typecheck && npm run test && npm run contract && npm run e2e-lite && npm run fingerprint",
     "capture": "tsx src/main/engine/capture.ts",
     "fingerprint": "tsx scripts/fingerprint.ts",
     "seed": "tsx scripts/seed.ts"

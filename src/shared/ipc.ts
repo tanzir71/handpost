@@ -1,10 +1,13 @@
 import { z } from 'zod';
 import { PLATFORM_IDS } from './types';
 export const accountConnectSchema=z.object({platform:z.enum(PLATFORM_IDS)});
-export const postSaveSchema=z.object({id:z.number().int().positive().optional(),text:z.string(),status:z.enum(['draft','scheduled']),targets:z.array(z.object({accountId:z.number().int().positive(),scheduledAt:z.string().datetime(),overrideText:z.string().optional(),firstComment:z.string().optional()})).default([])});
-export const queuePostSchema=z.object({id:z.number().int().positive().optional(),text:z.string(),targets:z.array(z.object({accountId:z.number().int().positive(),overrideText:z.string().optional(),firstComment:z.string().optional()})).min(1)});
+const targetOptions=z.record(z.union([z.string().max(5000),z.boolean()]));
+export const postSaveSchema=z.object({id:z.number().int().positive().optional(),text:z.string(),status:z.enum(['draft','scheduled']),targets:z.array(z.object({accountId:z.number().int().positive(),scheduledAt:z.string().datetime().optional(),overrideText:z.string().optional(),firstComment:z.string().optional(),options:targetOptions.optional()})).default([])});
+export const queuePostSchema=z.object({id:z.number().int().positive().optional(),text:z.string(),targets:z.array(z.object({accountId:z.number().int().positive(),overrideText:z.string().optional(),firstComment:z.string().optional(),options:targetOptions.optional()})).min(1)});
 export const mediaDataSchema=z.object({postId:z.number().int().positive(),files:z.array(z.object({name:z.string().min(1).max(255),mime:z.string().max(100),bytes:z.instanceof(Uint8Array).refine(v=>v.byteLength<=512*1024*1024,'File too large')})).max(10)});
 export const mediaAltSchema=z.object({mediaId:z.number().int().positive(),altText:z.string().max(2000)});
+export const positiveIdSchema=z.number().int().positive();
+export const artifactPathSchema=z.string().min(1).max(32_768);
 export const rescheduleSchema=z.object({targetId:z.number().int().positive(),scheduledAt:z.string().datetime()});
 export const retrySchema=z.object({targetId:z.number().int().positive()});
 export const templateSchema=z.object({name:z.string().min(1),body:z.string(),variables:z.array(z.string())});

@@ -14,10 +14,11 @@ export const capabilities: Record<PlatformId, CapabilityManifest> = {
 };
 
 export function countText(platform: PlatformId, text: string): number {
-  if (platform === 'x') return Array.from(text.replace(/https?:\/\/\S+/g, 'x'.repeat(23))).length;
-  if (platform === 'bluesky') return Array.from(text.normalize('NFC')).length;
+  if(platform==='x'){let count=0;let cursor=0;for(const match of text.matchAll(/https?:\/\/\S+/g)){const index=match.index??0;count+=xWeightedText(text.slice(cursor,index));count+=23;cursor=index+match[0].length;}return count+xWeightedText(text.slice(cursor));}
+  if(platform==='bluesky')return[...new Intl.Segmenter(undefined,{granularity:'grapheme'}).segment(text.normalize('NFC'))].length;
   return Array.from(text).length;
 }
+function xWeightedText(text:string):number{let total=0;for(const character of text){const code=character.codePointAt(0)!;const single=code<=4351||(code>=8192&&code<=8205)||(code>=8208&&code<=8223)||(code>=8242&&code<=8247);total+=single?1:2;}return total;}
 export function validatePost(platform: PlatformId, post: RenderedPost): string[] {
   const cap = capabilities[platform]; const errors: string[] = [];
   if (countText(platform, post.text) > cap.maxChars) errors.push(`Text exceeds ${cap.maxChars} characters`);
@@ -26,6 +27,6 @@ export function validatePost(platform: PlatformId, post: RenderedPost): string[]
   if (cap.maxFileBytes && post.media.some(m=>(m.sizeBytes??0)>cap.maxFileBytes!)) errors.push(`Media exceeds ${Math.round(cap.maxFileBytes/1024/1024)} MB`);
   if (cap.maxVideoSeconds && post.media.some(m=>m.kind==='video'&&(m.durationS??0)>cap.maxVideoSeconds!)) errors.push(`Video exceeds ${cap.maxVideoSeconds} seconds`);
   if (platform==='instagram'&&post.media.some(m=>m.width&&m.height&&(m.width/m.height<.8||m.width/m.height>1.91))) errors.push('Instagram will crop media outside 4:5–1.91:1');
-  if ((platform === 'tiktok' || platform === 'youtube' || platform === 'pinterest') && post.media.length === 0) errors.push(`${cap.label} requires media`);
+  if ((platform === 'instagram' || platform === 'tiktok' || platform === 'youtube' || platform === 'pinterest') && post.media.length === 0) errors.push(`${cap.label} requires media`);
   return errors;
 }
