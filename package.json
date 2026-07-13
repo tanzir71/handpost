@@ -19,7 +19,9 @@
     "check": "npm run lint && npm run typecheck && npm run test && npm run contract && npm run e2e-lite && npm run fingerprint",
     "capture": "tsx src/main/engine/capture.ts",
     "fingerprint": "tsx scripts/fingerprint.ts",
-    "seed": "tsx scripts/seed.ts"
+    "seed": "tsx scripts/seed.ts",
+    "website:verify": "node scripts/verify-website.mjs",
+    "website:browser": "node scripts/verify-website-browser.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

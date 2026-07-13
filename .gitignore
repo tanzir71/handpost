@@ -11,3 +11,6 @@ proof/
 relay-ui.png
 .env*
 !.env.example
+
+.vercel
+test-results/

@@ -1,5 +1,7 @@
 # Relay
 
+[Website](https://relay-publisher.vercel.app/) · [Safe mock demo](https://relay-publisher.vercel.app/demo)
+
 Relay is a local-first Electron desktop scheduler that publishes by driving the real social-platform web interfaces with Playwright. Drafts, media, browser profiles, logs, and proof screenshots remain on the owner’s computer.
 
 ## Run

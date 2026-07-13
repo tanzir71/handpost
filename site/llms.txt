@@ -1,0 +1,16 @@
+# Relay Publisher
+
+> Relay Publisher is a local-first desktop social scheduler that publishes by driving real platform web interfaces through user-controlled Chrome profiles. It avoids platform APIs but introduces Terms-of-Service, account, and UI-drift risk.
+
+Source: https://github.com/tanzir71/scheduler
+Safe mock demo: /demo/
+
+## Required caveats
+
+- Web-UI automation violates most platforms' terms; challenges, temporary blocks, or account loss are possible.
+- Circuit breakers, global concurrency one, human pacing, cooldowns, jitter, and daily caps reduce risk but cannot remove it.
+- Platform selectors change; budget for roughly one adapter repair per month.
+- Instagram and TikTok are fragile and may require manual fallback.
+- Real-platform smoke tests require owner login/2FA and create public posts. They are never run by CI or claimed by the website.
+- The public demo is browser-only canned data. It never contacts a platform or posts content.
+- Relay never automates login or exports cookies. Drafts, media, browser profiles, logs, and proof stay local.
