@@ -1,7 +1,13 @@
 import { useState, type SyntheticEvent } from 'react';
 import { handpostApi } from '../lib/api';
+import type { AttemptListRow, Fields } from '../../shared/rows';
+export type EvidenceAttempt = Fields<
+  AttemptListRow,
+  'id' | 'started_at' | 'outcome' | 'step_log_json',
+  'error_class' | 'published_url' | 'screenshot_path'
+>;
 interface AttemptEvidenceProps {
-  attempt: any;
+  attempt: EvidenceAttempt;
 }
 interface Step {
   name: string;
@@ -51,7 +57,7 @@ export function AttemptEvidence({ attempt }: AttemptEvidenceProps) {
         <p>No step log was recorded.</p>
       )}
       {attempt.published_url && (
-        <button className="subtle" onClick={() => void handpostApi.openExternal(attempt.published_url)}>
+        <button className="subtle" onClick={() => void handpostApi.openExternal(attempt.published_url ?? '')}>
           Open permalink
         </button>
       )}

@@ -1,9 +1,17 @@
 import { AlertTriangle, CheckCircle2, Clock3, ExternalLink, RotateCcw } from 'lucide-react';
 import { handpostApi } from '../lib/api';
 import { AttemptEvidence } from './AttemptEvidence';
-interface QueueProps {
-  targets: any[];
-  attempts: any[];
+import type { AttemptListRow, Fields, TargetListRow } from '../../shared/rows';
+import type { EvidenceAttempt } from './AttemptEvidence';
+export interface QueueProps {
+  targets: Array<
+    Fields<
+      TargetListRow,
+      'id' | 'platform' | 'base_text' | 'status' | 'scheduled_at_utc',
+      'error_code' | 'error_detail'
+    >
+  >;
+  attempts: Array<EvidenceAttempt & Fields<AttemptListRow, 'target_id'>>;
   onChanged: () => void;
 }
 export function Queue({ targets, attempts, onChanged }: QueueProps) {

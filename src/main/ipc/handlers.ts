@@ -28,9 +28,11 @@ import { nextFreeSlot } from '../scheduler/slots';
 import { connectAccount } from '../accounts/connect';
 import { recalculatePostStatus } from '../scheduler/status';
 import { CircuitBreaker } from '../scheduler/circuit-breaker';
+import type { SettingRow, TargetListRow } from '../../shared/rows';
 
 export function registerHandlers(db: HandpostDatabase, engine: BrowserEngine, dataDir: string): void {
-  const handle = (name: string, fn: (...args: any[]) => unknown) =>
+  // Every payload is `unknown` until a zod schema parses it.
+  const handle = (name: string, fn: (...args: unknown[]) => unknown) =>
     ipcMain.handle(name, (_event, ...args) => fn(...args));
   handle('snapshot', () => ({
     accounts: db.prepare('SELECT * FROM accounts ORDER BY platform').all(),
@@ -49,7 +51,7 @@ export function registerHandlers(db: HandpostDatabase, engine: BrowserEngine, da
     slots: db.prepare('SELECT * FROM queue_slots').all(),
     templates: db.prepare('SELECT * FROM templates ORDER BY name').all(),
     settings: [
-      ...(db.prepare('SELECT * FROM settings').all() as any[]),
+      ...(db.prepare('SELECT * FROM settings').all() as SettingRow[]),
       { key: 'dataFolder', value: dataDir },
     ],
   }));
@@ -167,7 +169,7 @@ export function registerHandlers(db: HandpostDatabase, engine: BrowserEngine, da
     ).run(platform);
     for (const postId of posts) recalculatePostStatus(db, postId);
   });
-  handle('attach-media', async (rawPostId: number) => {
+  handle('attach-media', async (rawPostId: unknown) => {
     const postId = positiveIdSchema.parse(rawPostId);
     if (!db.prepare('SELECT 1 FROM posts WHERE id=?').get(postId)) throw new Error('Post not found');
     const result = await dialog.showOpenDialog({
@@ -266,13 +268,13 @@ export function registerHandlers(db: HandpostDatabase, engine: BrowserEngine, da
     });
     if (!result.canceled) importArchive(db, result.filePaths[0]!, dataDir);
   });
-  handle('open-manual', async (rawTargetId: number) => {
+  handle('open-manual', async (rawTargetId: unknown) => {
     const targetId = positiveIdSchema.parse(rawTargetId);
     const row = db
       .prepare(
         'SELECT t.*,p.base_text,a.platform FROM post_targets t JOIN posts p ON p.id=t.post_id JOIN accounts a ON a.id=t.account_id WHERE t.id=?',
       )
-      .get(targetId) as any;
+      .get(targetId) as TargetListRow | undefined;
     if (!row) throw new Error('Target not found');
     clipboard.writeText(row.override_text ?? row.base_text);
     const config = adapterConfigs.find((c) => c.id === row.platform);
@@ -285,10 +287,10 @@ export function registerHandlers(db: HandpostDatabase, engine: BrowserEngine, da
     db.prepare("UPDATE post_targets SET status='manual' WHERE id=?").run(targetId);
     recalculatePostStatus(db, row.post_id);
   });
-  handle('open-external', async (rawUrl: string) => {
+  handle('open-external', async (rawUrl: unknown) => {
     await shell.openExternal(externalUrlSchema.parse(rawUrl));
   });
-  handle('read-artifact', async (rawPath: string) => {
+  handle('read-artifact', async (rawPath: unknown) => {
     const root = resolve(dataDir, 'artifacts');
     const path = resolve(artifactPathSchema.parse(rawPath));
     if (path !== root && !path.startsWith(`${root}${sep}`))

@@ -18,6 +18,8 @@ let database: HandpostDatabase | null = null;
 let localLog: ReturnType<typeof createLocalLogger> | null = null;
 let trayTimer: ReturnType<typeof setInterval> | null = null;
 let shutdownReady = false;
+/** Set when the user really quits (tray menu or OS); otherwise closing the window only hides it. */
+let isQuitting = false;
 if (process.platform === 'win32') app.setAppUserModelId('com.tanzir.handpost');
 function resolveAsset(name: string): string {
   const candidates = [join(__dirname, 'assets', name), join(process.cwd(), 'src', 'main', 'assets', name)];
@@ -94,7 +96,7 @@ async function boot() {
   if (devUrl) await mainWindow.loadURL(devUrl);
   else await mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
   mainWindow.on('close', (event) => {
-    if (!(app as any).isQuitting) {
+    if (!isQuitting) {
       event.preventDefault();
       mainWindow?.hide();
     }
@@ -108,7 +110,7 @@ async function boot() {
       {
         label: 'Quit',
         click: () => {
-          (app as any).isQuitting = true;
+          isQuitting = true;
           app.quit();
         },
       },
@@ -134,7 +136,7 @@ app
   });
 app.on('activate', () => mainWindow?.show());
 app.on('before-quit', (event) => {
-  (app as any).isQuitting = true;
+  isQuitting = true;
   scheduler?.stop();
   if (trayTimer) clearInterval(trayTimer);
   if (shutdownReady) return;

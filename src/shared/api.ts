@@ -1,13 +1,25 @@
+import type {
+  AccountRow,
+  CsvPlanRow,
+  AttemptListRow,
+  MediaRow,
+  PostRow,
+  SavedMediaRow,
+  SettingRow,
+  SlotRow,
+  TargetListRow,
+  TemplateRow,
+} from './rows';
 import type { PlatformId } from './types';
 export interface HandpostSnapshot {
-  accounts: any[];
-  posts: any[];
-  targets: any[];
-  media: any[];
-  attempts: any[];
-  slots: any[];
-  templates: any[];
-  settings: any[];
+  accounts: AccountRow[];
+  posts: PostRow[];
+  targets: TargetListRow[];
+  media: MediaRow[];
+  attempts: AttemptListRow[];
+  slots: SlotRow[];
+  templates: TemplateRow[];
+  settings: SettingRow[];
 }
 export interface HandpostApi {
   snapshot(): Promise<HandpostSnapshot>;
@@ -36,16 +48,16 @@ export interface HandpostApi {
   reschedule(input: { targetId: number; scheduledAt: string }): Promise<void>;
   retry(input: { targetId: number }): Promise<void>;
   connect(input: { platform: PlatformId }): Promise<void>;
-  attachMedia(postId: number): Promise<any[]>;
+  attachMedia(postId: number): Promise<SavedMediaRow[]>;
   addMedia(input: {
     postId: number;
     files: Array<{ name: string; mime: string; bytes: Uint8Array }>;
-  }): Promise<any[]>;
+  }): Promise<SavedMediaRow[]>;
   updateMediaAlt(input: { mediaId: number; altText: string }): Promise<void>;
   reenable(platform: PlatformId): Promise<void>;
   saveTemplate(input: { name: string; body: string; variables: string[] }): Promise<number>;
   saveSetting(input: { key: string; value: string }): Promise<void>;
-  csvImport(input: { csv: string; dryRun: boolean }): Promise<any[]>;
+  csvImport(input: { csv: string; dryRun: boolean }): Promise<CsvPlanRow[]>;
   saveAccountSettings(input: {
     accountId: number;
     platform: PlatformId;

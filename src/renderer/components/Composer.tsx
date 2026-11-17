@@ -4,20 +4,44 @@ import { capabilities, countText, postWarnings, validatePost } from '../../share
 import { renderTemplate, templateVariables } from '../../shared/templates';
 import type { MediaInput, PlatformId } from '../../shared/types';
 import { handpostApi } from '../lib/api';
+import type {
+  AccountRow,
+  Fields,
+  MediaRow as StoredMediaRow,
+  PostRow,
+  TargetListRow,
+  TemplateRow,
+} from '../../shared/rows';
 
-interface ComposerProps {
-  accounts: any[];
-  templates: any[];
-  posts?: any[];
-  targets?: any[];
-  storedMedia?: any[];
+export interface ComposerProps {
+  accounts: Array<Fields<AccountRow, 'id' | 'platform'>>;
+  templates: TemplateRow[];
+  posts?: Array<Fields<PostRow, 'id' | 'status' | 'base_text'>>;
+  targets?: Array<
+    Fields<
+      TargetListRow,
+      'post_id' | 'status' | 'platform',
+      'override_text' | 'first_comment' | 'options_json'
+    >
+  >;
+  storedMedia?: Array<
+    Fields<
+      StoredMediaRow,
+      'id' | 'post_id' | 'path' | 'kind',
+      'width' | 'height' | 'duration_s' | 'size_bytes' | 'alt_text'
+    >
+  >;
   onSaved: () => void;
 }
-interface MediaRow extends MediaInput {
+interface MediaRow {
   id: number;
-  duration_s?: number;
-  size_bytes?: number;
-  alt_text?: string;
+  path: MediaInput['path'];
+  kind: MediaInput['kind'];
+  width?: number | null | undefined;
+  height?: number | null | undefined;
+  duration_s?: number | null | undefined;
+  size_bytes?: number | null | undefined;
+  alt_text?: string | null | undefined;
 }
 function decodeThreadParts(value: unknown): string[] {
   if (typeof value !== 'string' || !value) return [];
@@ -271,12 +295,16 @@ export function Composer({
     setSelected(draftTargets.map((item) => item.platform));
     setOverrides(
       Object.fromEntries(
-        draftTargets.filter((item) => item.override_text).map((item) => [item.platform, item.override_text]),
+        draftTargets
+          .filter((item) => item.override_text)
+          .map((item) => [item.platform, item.override_text ?? '']),
       ),
     );
     setComments(
       Object.fromEntries(
-        draftTargets.filter((item) => item.first_comment).map((item) => [item.platform, item.first_comment]),
+        draftTargets
+          .filter((item) => item.first_comment)
+          .map((item) => [item.platform, item.first_comment ?? '']),
       ),
     );
     setPlatformOptions(

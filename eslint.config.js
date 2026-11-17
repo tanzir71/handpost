@@ -16,4 +16,9 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'off',
     },
   },
+  {
+    // Application code is fully typed; tests may still use `any` for deliberately partial doubles.
+    files: ['src/**/*.{ts,tsx}'],
+    rules: { '@typescript-eslint/no-explicit-any': 'error' },
+  },
 );

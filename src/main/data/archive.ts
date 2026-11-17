@@ -2,6 +2,7 @@ import AdmZip from 'adm-zip';
 import { basename, join } from 'node:path';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import type { HandpostDatabase } from '../db/database';
+import type { MediaRow } from '../../shared/rows';
 
 interface AttemptRow {
   [key: string]: unknown;
@@ -17,7 +18,7 @@ interface StepArtifact {
 
 export function exportArchive(db: HandpostDatabase, output: string): void {
   const zip = new AdmZip();
-  const media = db.prepare('SELECT * FROM media').all() as any[];
+  const media = db.prepare('SELECT * FROM media').all() as MediaRow[];
   const addArtifact = (path: string | undefined | null, archivePath: string) => {
     if (!path || !existsSync(path)) return undefined;
     zip.addLocalFile(path, archivePath.slice(0, archivePath.lastIndexOf('/')), basename(archivePath));

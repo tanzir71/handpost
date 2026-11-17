@@ -7,11 +7,11 @@ const mockApi = vi.hoisted(() => ({
   readArtifact: vi.fn(async () => 'data:image/png;base64,AA=='),
 }));
 vi.mock('../../src/renderer/lib/api', () => ({ handpostApi: mockApi }));
-import { Queue } from '../../src/renderer/components/Queue';
+import { Queue, type QueueProps } from '../../src/renderer/components/Queue';
 afterEach(() => cleanup());
 describe('Queue evidence', () => {
   it('renders expandable step logs for failed targets', () => {
-    const targets = [
+    const targets: QueueProps['targets'] = [
       {
         id: 9,
         platform: 'x',
@@ -22,7 +22,7 @@ describe('Queue evidence', () => {
         error_detail: 'selector missing',
       },
     ];
-    const attempts = [
+    const attempts: QueueProps['attempts'] = [
       {
         id: 2,
         target_id: 9,

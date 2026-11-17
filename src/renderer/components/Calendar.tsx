@@ -1,8 +1,10 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import { handpostApi } from '../lib/api';
-interface CalendarProps {
-  targets: any[];
+import type { Fields, TargetListRow } from '../../shared/rows';
+type CalendarTarget = Fields<TargetListRow, 'id' | 'platform' | 'scheduled_at_utc'>;
+export interface CalendarProps {
+  targets: CalendarTarget[];
   onChanged: () => void;
 }
 export function Calendar({ targets, onChanged }: CalendarProps) {
@@ -66,8 +68,9 @@ export function Calendar({ targets, onChanged }: CalendarProps) {
           {cells.map((date) => {
             const dateKey = date.toDateString();
             const rows = targets.filter(
-              (target) =>
-                target.scheduled_at_utc && new Date(target.scheduled_at_utc).toDateString() === dateKey,
+              (target): target is CalendarTarget & { scheduled_at_utc: string } =>
+                Boolean(target.scheduled_at_utc) &&
+                new Date(target.scheduled_at_utc ?? '').toDateString() === dateKey,
             );
             return (
               <div
@@ -77,7 +80,7 @@ export function Calendar({ targets, onChanged }: CalendarProps) {
                 onDrop={async (event) => {
                   const id = Number(event.dataTransfer.getData('target'));
                   const original = targets.find((target) => target.id === id);
-                  if (!original) return;
+                  if (!original?.scheduled_at_utc) return;
                   const time = new Date(original.scheduled_at_utc);
                   date.setHours(time.getHours(), time.getMinutes());
                   await handpostApi.reschedule({ targetId: id, scheduledAt: date.toISOString() });

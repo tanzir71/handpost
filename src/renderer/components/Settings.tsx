@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import { Download, Upload } from 'lucide-react';
 import { handpostApi } from '../lib/api';
+import type { CsvPlanRow, SettingRow } from '../../shared/rows';
 interface SettingsProps {
-  settings: any[];
+  settings: SettingRow[];
   onChanged: () => void;
 }
 export function Settings({ settings, onChanged }: SettingsProps) {
   const current = (key: string, fallback: string) =>
     settings.find((item) => item.key === key)?.value ?? fallback;
   const [csv, setCsv] = useState('text,platform,scheduled_at\n');
-  const [preview, setPreview] = useState<any[]>([]);
+  const [preview, setPreview] = useState<CsvPlanRow[]>([]);
   const [templateName, setTemplateName] = useState('');
   const [templateBody, setTemplateBody] = useState('');
   const toggle = async (key: string, value: boolean) => {

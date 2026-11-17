@@ -2,10 +2,11 @@ import { ExternalLink, Save, ShieldCheck } from 'lucide-react';
 import { capabilities } from '../../shared/capabilities';
 import type { PlatformId } from '../../shared/types';
 import { handpostApi } from '../lib/api';
+import type { AccountRow, SettingRow, SlotRow } from '../../shared/rows';
 interface AccountsProps {
-  accounts: any[];
-  slots: any[];
-  settings: any[];
+  accounts: AccountRow[];
+  slots: SlotRow[];
+  settings: SettingRow[];
   onChanged: () => void;
 }
 const safeHeadless = new Set(['bluesky']);

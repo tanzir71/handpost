@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { AttemptEvidence } from './AttemptEvidence';
-interface LogsProps {
-  attempts: any[];
+import type { AttemptListRow, Fields } from '../../shared/rows';
+import type { EvidenceAttempt } from './AttemptEvidence';
+export interface LogsProps {
+  attempts: Array<EvidenceAttempt & Fields<AttemptListRow, 'platform'>>;
 }
 export function Logs({ attempts }: LogsProps) {
   const [query, setQuery] = useState('');

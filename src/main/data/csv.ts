@@ -1,13 +1,8 @@
 import type { HandpostDatabase } from '../db/database';
 import { jitterDate } from '../engine/humanizer';
 import { nextFreeSlot } from '../scheduler/slots';
-export interface CsvPlanRow {
-  row: number;
-  text: string;
-  platform: string;
-  scheduledAt: string;
-  accountId: number;
-}
+import type { CsvPlanRow } from '../../shared/rows';
+export type { CsvPlanRow };
 export function parseCsvLine(line: string): string[] {
   const values: string[] = [];
   let value = '';
