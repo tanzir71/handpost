@@ -25,3 +25,11 @@ D6 Logo is a perforated postage stamp with an italic serif "h" (direction C, cho
 D7 The website moves from Vercel to GitHub Pages, static, relative URLs, no third-party requests.
 D8 A Buy Me a Coffee CTA (https://buymeacoffee.com/tanzir) sits directly above the landing-page footer and in the footer, README and Settings > About, as a plain link with no widget script.
 D9 Defaults: Handpost folder ~/Handpost; Auto-schedule on only after the owner confirms a one-time explanation of the inbox trust boundary; status file includes text previews (toggle).
+
+## 2026-11-18 - Rebrand implementation, browser choice, renderer base
+
+The app now runs as Handpost (package `handpost`, productName `Handpost`, app id `com.tanzir.handpost`). Because Electron derives the user-data folder from the product name, first start copies `<appData>/relay-scheduler` into `<appData>/Handpost` (database via a staged copy with its WAL, then browser profiles, media and artifacts) and re-points stored absolute paths; the old folder is never modified, and a marker file makes the import run once (`src/main/migrate-legacy.ts`). Archives are written as `handpost.json` and old `relay.json` archives still import.
+
+Playwright can drive Microsoft Edge as well as Google Chrome. `HANDPOST_BROWSER` (chrome | msedge | chromium) chooses explicitly; otherwise installed Chrome is used, then Edge, which every Windows machine has. Either way Handpost uses its own per-platform profile directory, never the person's everyday browser profile: borrowing those cookies would break the "manual login, no cookie export" rule, and current Chromium browsers refuse automation of the default profile anyway.
+
+The renderer is built with `base: './'` because Electron loads it from `file://`; root-absolute `/assets/...` URLs would leave a packaged app with a blank window. Tray icons are PNGs (Electron's nativeImage does not decode SVG), generated from `assets/brand/*.svg`.

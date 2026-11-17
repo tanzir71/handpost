@@ -44,11 +44,11 @@ Work through milestones **H0 → H10** in order (§4). Each has acceptance crite
 
 | # | Finding | Where | Fixed in |
 |---|---|---|---|
-| G1 | Product is still called Relay everywhere (package `relay-scheduler`, window title, tray, DB `relay.db`, `relayApi`, `data-relay` fixture attributes, site, llms.txt). | repo-wide | H1 |
-| G2 | Working tree on Windows shows all 159 tracked files modified — line endings only (`git diff --ignore-cr-at-eol --stat` is empty). No `.gitattributes`. | repo | H0 |
+| G1 | Product was still called Relay everywhere. **App side fixed 2026-11-18** (see PROGRESS.md); README, docs and the website still say Relay. | repo-wide | H1 ✓ app, H8 site |
+| G2 | No `.gitattributes`: line endings depend on each machine's git config. The Windows checkout is CRLF, so any git without `core.autocrlf` (WSL, a Linux VM, CI caches) sees every file as modified (`git diff --ignore-cr-at-eol --stat` is empty). | repo | H0 |
 | G3 | Most TypeScript is written as minified one-liners; hard to review or repair adapters quickly. | `src/**` | H0 |
 | G4 | `RelaySnapshot` and many props are `any[]`. | `src/shared/api.ts`, renderer | H0 |
-| G5 | Verification navigates to placeholder profile URLs that don't exist for real users: `x.com/profile`, `bsky.app/profile/me`, `threads.net/@me`. Live verification will report `unverified` forever on X, Bluesky and Threads. | `adapters/configs.ts` | H6 |
+| G5 | Verification navigates to placeholder profile URLs that don't exist for real users: `bsky.app/profile/me`, `threads.net/@me` (X fixed 2026-11-18 via the nav profile link + status permalink). | `adapters/configs.ts` | H6 |
 | G6 | No safe way to check selectors on real platforms without posting publicly. | engine | H6 (Rehearse) |
 | G7 | No packaging: no electron-builder/forge, no icons, no installer, no release workflow. Real Chrome is required (`channel:'chrome'`) but its absence only shows as a crash. | `package.json`, `browser.ts` | H6, H7 |
 | G8 | Queue slots are edited as free text `1@09:00, 3@15:30`; `queuePost` throws when no slots exist. | `Accounts.tsx`, `handlers.ts` | H4, H2 |

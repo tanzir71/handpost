@@ -1,3 +1,3 @@
-import type { RelayApi } from '../shared/api';
-declare global { interface Window { relay:RelayApi; } }
+import type { HandpostApi } from '../shared/api';
+declare global { interface Window { handpost:HandpostApi; } }
 export {};

@@ -1,7 +1,7 @@
-import type { RelayDatabase } from './database';
+import type { HandpostDatabase } from './database';
 
 export class Repositories {
-  constructor(readonly db: RelayDatabase) {}
+  constructor(readonly db: HandpostDatabase) {}
   accounts = {
     list: () => this.db.prepare('SELECT * FROM accounts ORDER BY id').all(),
     get: (id:number) => this.db.prepare('SELECT * FROM accounts WHERE id=?').get(id),
@@ -35,7 +35,7 @@ export class Repositories {
     delete: (key:string) => this.db.prepare('DELETE FROM settings WHERE key=?').run(key)
   }; }
 }
-function crud(db:RelayDatabase,table:string,columns:string[]) {
+function crud(db:HandpostDatabase,table:string,columns:string[]) {
   return {
     list: () => db.prepare(`SELECT * FROM ${table} ORDER BY id`).all(),
     get: (id:number) => db.prepare(`SELECT * FROM ${table} WHERE id=?`).get(id),

@@ -1,7 +1,7 @@
 import type { PlatformId } from './types';
-export interface RelaySnapshot {accounts:any[];posts:any[];targets:any[];media:any[];attempts:any[];slots:any[];templates:any[];settings:any[];}
-export interface RelayApi {
- snapshot():Promise<RelaySnapshot>; savePost(input:{id?:number;text:string;status:'draft'|'scheduled';targets:Array<{accountId:number;scheduledAt?:string;overrideText?:string;firstComment?:string;options?:Record<string,string|boolean>}>}):Promise<number>;
+export interface HandpostSnapshot {accounts:any[];posts:any[];targets:any[];media:any[];attempts:any[];slots:any[];templates:any[];settings:any[];}
+export interface HandpostApi {
+ snapshot():Promise<HandpostSnapshot>; savePost(input:{id?:number;text:string;status:'draft'|'scheduled';targets:Array<{accountId:number;scheduledAt?:string;overrideText?:string;firstComment?:string;options?:Record<string,string|boolean>}>}):Promise<number>;
  queuePost(input:{id?:number;text:string;targets:Array<{accountId:number;overrideText?:string;firstComment?:string;options?:Record<string,string|boolean>}>}):Promise<number>;
  reschedule(input:{targetId:number;scheduledAt:string}):Promise<void>; retry(input:{targetId:number}):Promise<void>; connect(input:{platform:PlatformId}):Promise<void>; attachMedia(postId:number):Promise<any[]>; addMedia(input:{postId:number;files:Array<{name:string;mime:string;bytes:Uint8Array}>}):Promise<any[]>;updateMediaAlt(input:{mediaId:number;altText:string}):Promise<void>;
  reenable(platform:PlatformId):Promise<void>;

@@ -1,21 +1,21 @@
 import AdmZip from 'adm-zip';
 import { basename, join } from 'node:path';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import type { RelayDatabase } from '../db/database';
+import type { HandpostDatabase } from '../db/database';
 
 interface AttemptRow{[key:string]:unknown;id:number;step_log_json:string;screenshot_path?:string|null;}
 interface StepArtifact{[key:string]:unknown;screenshotPath?:string;screenshotArchivePath?:string;}
 
-export function exportRelay(db:RelayDatabase,output:string):void{
+export function exportArchive(db:HandpostDatabase,output:string):void{
  const zip=new AdmZip();const media=db.prepare('SELECT * FROM media').all() as any[];
  const addArtifact=(path:string|undefined|null,archivePath:string)=>{if(!path||!existsSync(path))return undefined;zip.addLocalFile(path,archivePath.slice(0,archivePath.lastIndexOf('/')),basename(archivePath));return archivePath;};
  const attempts=(db.prepare('SELECT * FROM publish_attempts').all() as AttemptRow[]).map(row=>{let logs:StepArtifact[]=[];try{const value=JSON.parse(row.step_log_json);if(Array.isArray(value))logs=value;}catch{logs=[];}const archivedLogs=logs.map((log,index)=>({...log,...(addArtifact(log.screenshotPath,`artifacts/${row.id}/step-${index}-${basename(log.screenshotPath??'failure.png')}`)?{screenshotArchivePath:`artifacts/${row.id}/step-${index}-${basename(log.screenshotPath??'failure.png')}`}:{})}));const screenshotArchivePath=addArtifact(row.screenshot_path,`artifacts/${row.id}/proof-${basename(row.screenshot_path??'proof.png')}`);return{...row,step_log_json:JSON.stringify(archivedLogs),...(screenshotArchivePath?{screenshot_archive_path:screenshotArchivePath}:{})};});
  const payload={version:1,exportedAt:new Date().toISOString(),posts:db.prepare('SELECT * FROM posts').all(),targets:db.prepare('SELECT t.*,a.platform FROM post_targets t JOIN accounts a ON a.id=t.account_id').all(),media:media.map(row=>({...row,archive_path:`media/${row.post_id}/${basename(row.path)}`})),attempts,slots:db.prepare('SELECT s.*,a.platform FROM queue_slots s JOIN accounts a ON a.id=s.account_id').all(),templates:db.prepare('SELECT * FROM templates').all(),settings:db.prepare("SELECT * FROM settings WHERE key NOT LIKE 'breaker:%'").all()};
- zip.addFile('relay.json',Buffer.from(JSON.stringify(payload,null,2)));for(const row of media)zip.addLocalFile(row.path,`media/${row.post_id}`);zip.writeZip(output);
+ zip.addFile('handpost.json',Buffer.from(JSON.stringify(payload,null,2)));for(const row of media)zip.addLocalFile(row.path,`media/${row.post_id}`);zip.writeZip(output);
 }
 
-export function importRelay(db:RelayDatabase,input:string,dataDir:string):void{
- const zip=new AdmZip(input);const manifest=zip.getEntry('relay.json');if(!manifest)throw new Error('Invalid Relay archive: relay.json missing');const data=JSON.parse(manifest.getData().toString('utf8'));if(data.version!==1)throw new Error(`Unsupported Relay archive version: ${data.version}`);
+export function importArchive(db:HandpostDatabase,input:string,dataDir:string):void{
+ const zip=new AdmZip(input);const manifest=zip.getEntry('handpost.json')??zip.getEntry('relay.json');if(!manifest)throw new Error('Invalid Handpost archive: handpost.json missing');const data=JSON.parse(manifest.getData().toString('utf8'));if(data.version!==1)throw new Error(`Unsupported Handpost archive version: ${data.version}`);
  const mediaRoot=join(dataDir,'media');const artifactRoot=join(dataDir,'artifacts','imported');
  const accountId=(platform:string)=>{const id=db.prepare('SELECT id FROM accounts WHERE platform=?').pluck().get(platform);if(!id)throw new Error(`Missing account for ${platform}`);return id;};
  const restoreArtifact=(archivePath:unknown,fallback:unknown)=>{if(typeof archivePath!=='string')return typeof fallback==='string'?fallback:null;const entry=zip.getEntry(archivePath);if(!entry)throw new Error(`Archive artifact missing: ${archivePath}`);mkdirSync(artifactRoot,{recursive:true});const path=join(artifactRoot,`${Date.now()}-${archivePath.replace(/[^a-zA-Z0-9._-]/g,'-')}`);writeFileSync(path,entry.getData());return path;};

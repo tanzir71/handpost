@@ -1,6 +1,6 @@
-import type { RelayDatabase } from '../db/database';
+import type { HandpostDatabase } from '../db/database';
 
-export function recalculatePostStatus(db:RelayDatabase,postId:number):void{
+export function recalculatePostStatus(db:HandpostDatabase,postId:number):void{
  const statuses=db.prepare('SELECT status FROM post_targets WHERE post_id=?').pluck().all(postId) as string[];if(!statuses.length)return;
  let status='scheduled';
  if(statuses.every(value=>value==='published'))status='published';

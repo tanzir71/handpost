@@ -1,8 +1,8 @@
-import type { RelayDatabase } from '../db/database';
+import type { HandpostDatabase } from '../db/database';
 const DAY=86_400_000;
 
 export class CircuitBreaker {
- constructor(private db:RelayDatabase){}
+ constructor(private db:HandpostDatabase){}
 
  trip(platform:string,now=new Date()):number[]{
   const key=`breaker:${platform}`;const recent=JSON.parse(String(this.db.prepare('SELECT value FROM settings WHERE key=?').pluck().get(key)??'[]')) as string[];

@@ -1,6 +1,8 @@
 {
-  "name": "relay-scheduler",
-  "version": "0.1.0",
+  "name": "handpost",
+  "productName": "Handpost",
+  "description": "Local-first desktop scheduler that posts through your own browser and takes posts from Claude or Codex via a folder.",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "overrides": {
@@ -8,7 +10,8 @@
   },
   "main": "dist/main/index.cjs",
   "scripts": {
-    "dev": "concurrently -k \"vite --host 127.0.0.1\" \"tsup --watch --onSuccess \\\"cross-env RELAY_DEV_SERVER_URL=http://127.0.0.1:5173 electron .\\\"\"",
+    "dev": "concurrently -k \"vite --host 127.0.0.1\" \"tsup --watch --onSuccess \\\"cross-env HANDPOST_DEV_SERVER_URL=http://127.0.0.1:5173 electron .\\\"\"",
+    "dev:edge": "cross-env HANDPOST_BROWSER=msedge npm run dev",
     "build": "vite build && tsup && tsx scripts/copy-assets.ts",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
