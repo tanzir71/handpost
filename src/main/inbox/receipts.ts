@@ -240,7 +240,7 @@ export function buildStatus(db: HandpostDatabase, options: StatusOptions): Statu
          (SELECT max(pa.finished_at) FROM publish_attempts pa WHERE pa.target_id=t.id) AS finished_at,
          (SELECT max(pa.finished_at) FROM publish_attempts pa WHERE pa.target_id=t.id AND pa.outcome='published') AS published_at
        FROM post_targets t JOIN accounts a ON a.id=t.account_id LEFT JOIN inbox_items i ON i.post_id=t.post_id
-       WHERE t.status NOT IN ('scheduled','publishing','draft','cancelled')
+       WHERE t.status NOT IN ('scheduled','publishing','draft','cancelled','rehearsal')
          AND EXISTS (SELECT 1 FROM publish_attempts pa WHERE pa.target_id=t.id AND pa.finished_at>=?)
        ORDER BY finished_at DESC LIMIT 100`,
     )

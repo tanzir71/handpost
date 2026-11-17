@@ -3,6 +3,7 @@ import { capabilities, validatePost } from '../../shared/capabilities';
 import type { PublishError } from '../../shared/types';
 import { humanClick, humanType, pause } from '../engine/humanizer';
 import type { PlatformAdapter, AdapterConfig } from './types';
+import { identityFromPath, type AccountIdentity } from './identity';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
@@ -22,6 +23,13 @@ export interface AdapterInteractions {
   click(locator: Locator): Promise<void>;
 }
 const productionInteractions: AdapterInteractions = { pause, type: humanType, click: humanClick };
+/** "Discard post?" confirmations seen on the supported platforms, plus the fixture marker. */
+const DEFAULT_DISCARD = [
+  'button:has-text("Discard")',
+  'div[role="button"]:has-text("Discard")',
+  '[data-testid="confirmationSheetConfirm"]',
+  '[data-handpost="discard"]',
+];
 /** Single-page apps (X, Threads…) render after DOMContentLoaded; wait for the page to settle or for a known marker. */
 async function settle(page: Page, markers: string[], timeout = 10_000): Promise<void> {
   const quiet = (promise: Promise<unknown>) =>
@@ -46,10 +54,48 @@ export function createAdapter(
     }
     return errors;
   };
+  /** The only place the submit locator is created; refuses outright during a rehearsal. */
+  const submitButton = (page: Page, rehearse: boolean): Locator => {
+    if (rehearse) throw failure('content', 'rehearsal_submit', 'Rehearsal must never reach the submit step');
+    return first(page, config.selectors.submit);
+  };
+  /** Rehearsal ending: screenshot the filled composer, then discard it (Escape, confirm "Discard"). */
+  const rehearseEnd = async (
+    page: Page,
+    artifactDir: string | undefined,
+    report: Parameters<PlatformAdapter['publish']>[2],
+  ) => {
+    const dir = artifactDir ?? 'proof';
+    const screenshotPath = join(dir, `${config.id}-rehearsal-${Date.now()}.png`);
+    await report.step('screenshot filled composer', async () => {
+      await mkdir(dir, { recursive: true });
+      await page.screenshot({ path: screenshotPath, fullPage: true });
+    });
+    await report.step('discard draft', async () => {
+      await page.keyboard.press('Escape');
+      const confirm = first(page, config.discard ?? DEFAULT_DISCARD);
+      if (await confirm.count().catch(() => 0)) await interactions.click(confirm);
+      // Leave the composer page entirely so nothing half-filled stays open in the profile.
+      await page.goto('about:blank').catch(() => undefined);
+    });
+    return { submitted: false, signal: 'rehearsal', screenshotPath };
+  };
+  const identify = async (page: Page): Promise<AccountIdentity | null> => {
+    const fromUrl = identityFromPath(config.id, new URL(page.url()).pathname);
+    if (config.id === 'youtube' && fromUrl) return fromUrl;
+    if (!config.identity?.length) return null;
+    const link = first(page, config.identity);
+    await link.waitFor({ state: 'attached', timeout: 8_000 }).catch(() => undefined);
+    const href = (await link.count()) ? await link.getAttribute('href') : null;
+    if (!href) return null;
+    const url = new URL(href, page.url());
+    return identityFromPath(config.id, url.pathname, url.search);
+  };
   return {
     id: config.id,
     capabilities: capabilities[config.id],
     validate,
+    identify,
     async checkSession(ctx) {
       const page = ctx.pages()[0] ?? (await ctx.newPage());
       await page.goto(config.home, { waitUntil: 'domcontentloaded' });
@@ -57,7 +103,8 @@ export function createAdapter(
       if (await first(page, config.selectors.challenged).count()) return 'challenged';
       return (await first(page, config.selectors.loggedIn).count()) ? 'ok' : 'logged_out';
     },
-    async publish(ctx, post, report) {
+    async publish(ctx, post, report, options = {}) {
+      const rehearse = options.rehearse === true;
       const errors = validate(post);
       if (errors.length) throw failure('content', 'invalid_content', errors.join('; '));
       const page = ctx.pages()[0] ?? (await ctx.newPage());
@@ -119,7 +166,9 @@ export function createAdapter(
           await interactions.type(combined(page, config.thread!.text).nth(index + 1), text);
         });
       await interactions.pause(page);
-      await report.step('submit', () => interactions.click(first(page, config.selectors.submit)));
+      if (rehearse) return rehearseEnd(page, post.artifactDir, report);
+      // Below this line only runs for real publishes. Rehearsals returned above, so their submit is unreachable.
+      await report.step('submit', () => interactions.click(submitButton(page, rehearse)));
       if (config.processing)
         await report.step('wait for processing', () =>
           first(page, config.selectors.success).waitFor({ state: 'visible', timeout: 300_000 }),
@@ -132,12 +181,17 @@ export function createAdapter(
     },
     async verify(ctx, post) {
       const page = ctx.pages()[0] ?? (await ctx.newPage());
-      await page.goto(config.profile, { waitUntil: 'domcontentloaded' });
-      if (config.profileLink) {
-        const profileLink = first(page, config.profileLink);
-        await profileLink.waitFor({ state: 'attached', timeout: 20_000 }).catch(() => undefined);
-        const own = (await profileLink.count()) ? await profileLink.getAttribute('href') : null;
-        if (own) await page.goto(new URL(own, page.url()).toString(), { waitUntil: 'domcontentloaded' });
+      if (post.profileUrl) {
+        // The account's own profile, captured after login or set by the owner in Accounts.
+        await page.goto(post.profileUrl, { waitUntil: 'domcontentloaded' });
+      } else {
+        await page.goto(config.profile, { waitUntil: 'domcontentloaded' });
+        if (config.profileLink) {
+          const profileLink = first(page, config.profileLink);
+          await profileLink.waitFor({ state: 'attached', timeout: 10_000 }).catch(() => undefined);
+          const own = (await profileLink.count()) ? await profileLink.getAttribute('href') : null;
+          if (own) await page.goto(new URL(own, page.url()).toString(), { waitUntil: 'domcontentloaded' });
+        }
       }
       const prefix = post.text.slice(0, 40);
       const match = first(page, config.selectors.post).filter({ hasText: prefix }).first();

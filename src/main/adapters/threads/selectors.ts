@@ -7,3 +7,5 @@ export const threadsSelectors = withSelectorFallbacks({
   success: ['[role="status"]'],
   post: ['article'],
 });
+/** The logged-in account's own profile link (handle + profile URL are read from its href). */
+export const threadsIdentity = ['a[role="link"][href^="/@"]', '[data-handpost="profile-link"]'];

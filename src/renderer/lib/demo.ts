@@ -468,5 +468,33 @@ export function createDemoApi(): HandpostApi {
     cancelTarget: async () => {},
     publishNow: async () => {},
     appInfo: async () => info,
+    browserInfo: async () => ({
+      channel: 'chrome',
+      found: true,
+      path: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      version: '131.0.6778.86',
+      label: 'Google Chrome',
+      profiles: 'C:\\Users\\you\\AppData\\Roaming\\Handpost\\profiles',
+    }),
+    setProfileUrl: async ({ platform, url }) => {
+      const handle = url.split('/').filter(Boolean).pop() ?? platform;
+      snapshot.accounts = snapshot.accounts.map((row) =>
+        row.platform === platform ? { ...row, handle, profile_url: url } : row,
+      );
+      return { handle, profileUrl: url };
+    },
+    rehearse: async () => ({
+      attemptId: 99,
+      outcome: 'rehearsal',
+      screenshotPath: null,
+      screenshot: null,
+      steps: [
+        { name: 'open composer', startedAt: iso(-9000), finishedAt: iso(-7800), outcome: 'ok' },
+        { name: 'fill text', startedAt: iso(-7800), finishedAt: iso(-4100), outcome: 'ok' },
+        { name: 'screenshot filled composer', startedAt: iso(-4100), finishedAt: iso(-3600), outcome: 'ok' },
+        { name: 'discard draft', startedAt: iso(-3600), finishedAt: iso(-3000), outcome: 'ok' },
+      ],
+      error: null,
+    }),
   };
 }

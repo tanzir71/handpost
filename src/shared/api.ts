@@ -28,6 +28,22 @@ export interface AppInfo {
   chrome: string;
   platform: string;
 }
+export interface BrowserInfoView {
+  channel: string;
+  found: boolean;
+  path: string | null;
+  version: string | null;
+  label: string;
+  profiles: string;
+}
+export interface RehearsalView {
+  attemptId: number;
+  outcome: 'rehearsal' | 'failed' | 'needs_login' | 'chrome_missing';
+  screenshotPath: string | null;
+  screenshot: string | null;
+  steps: Array<{ name: string; startedAt: string; finishedAt: string; outcome: string; detail?: string }>;
+  error: string | null;
+}
 export type InboxOpenTarget =
   { target: 'folder' | 'inbox' | 'rejected' | 'receipts' } | { target: 'receipt'; id: string };
 export interface HandpostSnapshot {
@@ -103,4 +119,11 @@ export interface HandpostApi {
   cancelTarget(input: { targetId: number }): Promise<void>;
   publishNow(input: { targetId: number }): Promise<void>;
   appInfo(): Promise<AppInfo>;
+  browserInfo(): Promise<BrowserInfoView>;
+  setProfileUrl(input: {
+    platform: PlatformId;
+    url: string;
+  }): Promise<{ handle: string; profileUrl: string } | null>;
+  /** Fills the platform's composer, screenshots and discards it. `null` when the owner cancelled a video pick. */
+  rehearse(input: { platform: PlatformId }): Promise<RehearsalView | null>;
 }

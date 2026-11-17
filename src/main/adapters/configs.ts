@@ -1,14 +1,14 @@
 import type { AdapterConfig } from './types';
 import { mockSelectors } from './selector-fallbacks';
-import { xSelectors } from './x/selectors';
-import { linkedinSelectors } from './linkedin/selectors';
-import { blueskySelectors } from './bluesky/selectors';
-import { threadsSelectors } from './threads/selectors';
-import { facebookSelectors } from './facebook/selectors';
-import { instagramSelectors } from './instagram/selectors';
-import { tiktokSelectors } from './tiktok/selectors';
-import { youtubeSelectors } from './youtube/selectors';
-import { pinterestSelectors } from './pinterest/selectors';
+import { xIdentity, xSelectors } from './x/selectors';
+import { linkedinIdentity, linkedinSelectors } from './linkedin/selectors';
+import { blueskyIdentity, blueskySelectors } from './bluesky/selectors';
+import { threadsIdentity, threadsSelectors } from './threads/selectors';
+import { facebookIdentity, facebookSelectors } from './facebook/selectors';
+import { instagramIdentity, instagramSelectors } from './instagram/selectors';
+import { tiktokIdentity, tiktokSelectors } from './tiktok/selectors';
+import { youtubeIdentity, youtubeSelectors } from './youtube/selectors';
+import { pinterestIdentity, pinterestSelectors } from './pinterest/selectors';
 
 export const adapterConfigs: AdapterConfig[] = [
   {
@@ -26,6 +26,7 @@ export const adapterConfigs: AdapterConfig[] = [
     profileLink: ['a[data-testid="AppTabBar_Profile_Link"]'],
     permalink: ['a:has(time)', 'a[href*="/status/"]'],
     selectors: xSelectors,
+    identity: xIdentity,
     altText: {
       open: ['[aria-label="Add description"]', '[data-handpost="alt-open"]'],
       input: ['textarea[aria-label*="description"]', '[data-handpost="alt-input"]'],
@@ -44,8 +45,9 @@ export const adapterConfigs: AdapterConfig[] = [
     id: 'linkedin',
     home: 'https://www.linkedin.com/feed/',
     compose: 'https://www.linkedin.com/feed/?shareActive=true',
-    profile: 'https://www.linkedin.com/in/me/recent-activity/all/',
+    profile: 'https://www.linkedin.com/feed/',
     selectors: linkedinSelectors,
+    identity: linkedinIdentity,
     comment: {
       input: ['.comments-comment-box__form [contenteditable="true"]', '[data-handpost="comment-input"]'],
       submit: ['button.comments-comment-box__submit-button', '[data-handpost="comment-submit"]'],
@@ -55,8 +57,10 @@ export const adapterConfigs: AdapterConfig[] = [
     id: 'bluesky',
     home: 'https://bsky.app',
     compose: 'https://bsky.app',
-    profile: 'https://bsky.app/profile/me',
+    profile: 'https://bsky.app',
+    profileLink: ['a[aria-label="Profile"][href^="/profile/"]'],
     selectors: blueskySelectors,
+    identity: blueskyIdentity,
     altText: {
       open: ['button:has-text("ALT")', '[data-handpost="alt-open"]'],
       input: ['textarea[placeholder*="alt"]', '[data-handpost="alt-input"]'],
@@ -67,8 +71,10 @@ export const adapterConfigs: AdapterConfig[] = [
     id: 'threads',
     home: 'https://www.threads.net',
     compose: 'https://www.threads.net',
-    profile: 'https://www.threads.net/@me',
+    profile: 'https://www.threads.net',
+    profileLink: ['a[role="link"][href^="/@"]'],
     selectors: threadsSelectors,
+    identity: threadsIdentity,
     comment: {
       input: ['[contenteditable="true"]', '[data-handpost="comment-input"]'],
       submit: ['div[role="button"]:has-text("Post")', '[data-handpost="comment-submit"]'],
@@ -78,8 +84,9 @@ export const adapterConfigs: AdapterConfig[] = [
     id: 'facebook',
     home: 'https://www.facebook.com',
     compose: 'https://www.facebook.com',
-    profile: 'https://www.facebook.com/me',
+    profile: 'https://www.facebook.com',
     selectors: facebookSelectors,
+    identity: facebookIdentity,
     optionFields: [
       {
         key: 'pageName',
@@ -103,8 +110,9 @@ export const adapterConfigs: AdapterConfig[] = [
     id: 'instagram',
     home: 'https://www.instagram.com',
     compose: 'https://www.instagram.com',
-    profile: 'https://www.instagram.com/accounts/edit/',
+    profile: 'https://www.instagram.com',
     selectors: instagramSelectors,
+    identity: instagramIdentity,
     processing: true,
     flowSteps: [
       {
@@ -127,8 +135,10 @@ export const adapterConfigs: AdapterConfig[] = [
     id: 'tiktok',
     home: 'https://www.tiktok.com',
     compose: 'https://www.tiktok.com/upload',
-    profile: 'https://www.tiktok.com/@me',
+    profile: 'https://www.tiktok.com',
+    profileLink: ['a[data-e2e="nav-profile"]'],
     selectors: tiktokSelectors,
+    identity: tiktokIdentity,
     processing: true,
     optionFields: [
       {
@@ -148,8 +158,9 @@ export const adapterConfigs: AdapterConfig[] = [
     id: 'youtube',
     home: 'https://studio.youtube.com',
     compose: 'https://studio.youtube.com',
-    profile: 'https://studio.youtube.com/channel/UC/videos/short',
+    profile: 'https://studio.youtube.com',
     selectors: youtubeSelectors,
+    identity: youtubeIdentity,
     processing: true,
     optionFields: [
       {
@@ -189,8 +200,9 @@ export const adapterConfigs: AdapterConfig[] = [
     id: 'pinterest',
     home: 'https://www.pinterest.com',
     compose: 'https://www.pinterest.com/pin-builder/',
-    profile: 'https://www.pinterest.com/me/_created/',
+    profile: 'https://www.pinterest.com',
     selectors: pinterestSelectors,
+    identity: pinterestIdentity,
     processing: true,
     optionFields: [
       {

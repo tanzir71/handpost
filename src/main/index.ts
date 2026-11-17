@@ -12,6 +12,7 @@ import { join } from 'node:path';
 import { existsSync, mkdirSync } from 'node:fs';
 import { openDatabase, type HandpostDatabase } from './db/database';
 import { BrowserEngine, resolveBrowserChannel } from './engine/browser';
+import { detectBrowser } from './engine/browser-detect';
 import { LEGACY_IMPORT_NOTICE, migrateLegacyData } from './migrate-legacy';
 import { registerHandlers } from './ipc/handlers';
 import { Scheduler } from './scheduler/scheduler';
@@ -67,7 +68,17 @@ async function boot() {
   const db = openDatabase(join(dataDir, 'handpost.db'));
   database = db;
   engine = new BrowserEngine(join(dataDir, 'profiles'), resolveBrowserChannel(process.env.HANDPOST_BROWSER));
-  localLog.logger.info({ browser: engine.channel }, 'Browser channel selected');
+  // Detect the browser once now and again at most once a minute (installing Chrome while Handpost runs works).
+  let browserCache = { info: detectBrowser(engine.channel), at: Date.now() };
+  const browser = () => {
+    if (Date.now() - browserCache.at > 60_000)
+      browserCache = { info: detectBrowser(engine!.channel), at: Date.now() };
+    return browserCache.info;
+  };
+  localLog.logger.info(
+    { browser: engine.channel, found: browserCache.info.found, version: browserCache.info.version },
+    'Browser channel selected',
+  );
   for (const platform of PLATFORM_IDS)
     db.prepare('INSERT OR IGNORE INTO accounts(platform,display_name,profile_dir) VALUES (?,?,?)').run(
       platform,
@@ -94,7 +105,6 @@ async function boot() {
     },
     layoutFiles: writerGuide ? { [WRITER_FILE]: writerGuide } : {},
   });
-  registerHandlers(db, engine, dataDir, inbox);
   app.setLoginItemSettings({
     openAtLogin: db.prepare("SELECT value FROM settings WHERE key='launchAtLogin'").pluck().get() === 'true',
   });
@@ -109,7 +119,13 @@ async function boot() {
     },
     undefined,
     join(dataDir, 'artifacts'),
+    { browserReady: () => browser().found },
   );
+  const activeScheduler = scheduler;
+  registerHandlers(db, engine, dataDir, inbox, undefined, {
+    browserInfo: browser,
+    rehearse: (platform, input) => activeScheduler.rehearse(platform, input),
+  });
   scheduler.start();
   await inbox
     .start()

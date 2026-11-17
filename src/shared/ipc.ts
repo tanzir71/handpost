@@ -101,3 +101,4 @@ export const inboxOpenSchema = z.union([
   z.object({ target: z.enum(['folder', 'inbox', 'rejected', 'receipts']) }),
   z.object({ target: z.literal('receipt'), id: inboxIdSchema }),
 ]);
+export const profileUrlSchema = z.object({ platform: z.enum(PLATFORM_IDS), url: z.string().max(2000) });

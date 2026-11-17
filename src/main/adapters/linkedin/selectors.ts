@@ -7,3 +7,9 @@ export const linkedinSelectors = withSelectorFallbacks({
   success: ['.artdeco-toast-item'],
   post: ['.feed-shared-update-v2'],
 });
+/** The logged-in account's own profile link (handle + profile URL are read from its href). */
+export const linkedinIdentity = [
+  '.feed-identity-module__actor-meta a[href*="/in/"]',
+  'a.global-nav__primary-link-me-menu-trigger[href*="/in/"]',
+  '[data-handpost="profile-link"]',
+];

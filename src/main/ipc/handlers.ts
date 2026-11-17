@@ -30,7 +30,18 @@ import { recalculatePostStatus } from '../scheduler/status';
 import { CircuitBreaker } from '../scheduler/circuit-breaker';
 import type { SettingRow, TargetListRow } from '../../shared/rows';
 import type { InboxService } from '../inbox/service';
-import { inboxIdSchema, inboxOpenSchema, targetIdSchema } from '../../shared/ipc';
+import { identityFromUrl } from '../adapters/identity';
+import { rehearsalPost } from '../accounts/rehearsal';
+import type { BrowserInfo } from '../engine/browser-detect';
+import type { RehearsalInput, RehearsalResult } from '../scheduler/scheduler';
+import type { PlatformId } from '../../shared/types';
+import { existsSync } from 'node:fs';
+
+export interface LiveDeps {
+  browserInfo?: () => BrowserInfo;
+  rehearse?: (platform: PlatformId, input: RehearsalInput) => Promise<RehearsalResult>;
+}
+import { inboxIdSchema, inboxOpenSchema, profileUrlSchema, targetIdSchema } from '../../shared/ipc';
 import { SETTING_KEYS } from '../inbox/service';
 import { breakerRows, pacingToday } from '../scheduler/pacing';
 import { automationInfo, readIntegration } from '../inbox/integrations';
@@ -41,16 +52,17 @@ export function registerHandlers(
   dataDir: string,
   inbox?: InboxService,
   onSettingChanged?: (key: string, value: string) => void,
+  live: LiveDeps = {},
 ): void {
   // Every payload is `unknown` until a zod schema parses it.
   const handle = (name: string, fn: (...args: unknown[]) => unknown) =>
     ipcMain.handle(name, (_event, ...args) => fn(...args));
   handle('snapshot', () => ({
     accounts: db.prepare('SELECT * FROM accounts ORDER BY platform').all(),
-    posts: db.prepare('SELECT * FROM posts ORDER BY updated_at DESC').all(),
+    posts: db.prepare("SELECT * FROM posts WHERE status<>'rehearsal' ORDER BY updated_at DESC").all(),
     targets: db
       .prepare(
-        'SELECT t.*,a.platform,p.base_text FROM post_targets t JOIN accounts a ON a.id=t.account_id JOIN posts p ON p.id=t.post_id ORDER BY COALESCE(t.scheduled_at_utc,t.id)',
+        "SELECT t.*,a.platform,p.base_text FROM post_targets t JOIN accounts a ON a.id=t.account_id JOIN posts p ON p.id=t.post_id WHERE t.status<>'rehearsal' ORDER BY COALESCE(t.scheduled_at_utc,t.id)",
       )
       .all(),
     media: db.prepare('SELECT * FROM media ORDER BY order_idx,id').all(),
@@ -299,6 +311,42 @@ export function registerHandlers(
       "UPDATE post_targets SET scheduled_at_utc=?,jittered_at_utc=?,status='scheduled' WHERE id=? AND status IN ('scheduled','needs_attention')",
     ).run(now, now, targetId);
     if (typeof postId === 'number') recalculatePostStatus(db, postId);
+  });
+  // ── Live readiness (H6) ────────────────────────────────────────────────────────────────────────────────
+  handle('browser-info', () => ({ ...(live.browserInfo?.() ?? null), profiles: join(dataDir, 'profiles') }));
+  handle('set-profile-url', (raw) => {
+    const { platform, url } = profileUrlSchema.parse(raw);
+    if (!url) {
+      db.prepare('UPDATE accounts SET profile_url=NULL WHERE platform=?').run(platform);
+      return null;
+    }
+    const identity = identityFromUrl(platform, url);
+    if (!identity) throw new Error('That does not look like a link to your own profile on this platform');
+    db.prepare('UPDATE accounts SET handle=?,profile_url=? WHERE platform=?').run(
+      identity.handle,
+      identity.profileUrl,
+      platform,
+    );
+    return identity;
+  });
+  handle('rehearse', async (raw) => {
+    const { platform } = accountConnectSchema.parse(raw);
+    if (!live.rehearse) throw new Error('Rehearsal is not available');
+    const input = await rehearsalPost(db, platform, dataDir, async () => {
+      const result = await dialog.showOpenDialog({
+        title: `Choose a short video to rehearse ${platform} with (it will not be posted)`,
+        properties: ['openFile'],
+        filters: [{ name: 'Video', extensions: ['mp4', 'mov', 'webm'] }],
+      });
+      return result.canceled ? null : (result.filePaths[0] ?? null);
+    });
+    if (!input) return null;
+    const result = await live.rehearse(platform, input);
+    const screenshot =
+      result.screenshotPath && existsSync(result.screenshotPath)
+        ? `data:image/png;base64,${(await readFile(result.screenshotPath)).toString('base64')}`
+        : null;
+    return { ...result, screenshot };
   });
   handle('app-info', () => ({
     version: app.getVersion(),

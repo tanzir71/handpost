@@ -7,6 +7,7 @@ const TONES: Record<string, Tone> = {
   published: 'ok',
   ok: 'ok',
   scheduled: 'ink',
+  rehearsal: 'ink',
   publishing: 'ink',
   held: 'warn',
   needs_login: 'warn',

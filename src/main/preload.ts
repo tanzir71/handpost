@@ -34,5 +34,8 @@ const api: HandpostApi = {
   cancelTarget: (v) => ipcRenderer.invoke('cancel-target', v),
   publishNow: (v) => ipcRenderer.invoke('publish-now', v),
   appInfo: () => ipcRenderer.invoke('app-info'),
+  browserInfo: () => ipcRenderer.invoke('browser-info'),
+  setProfileUrl: (v) => ipcRenderer.invoke('set-profile-url', v),
+  rehearse: (v) => ipcRenderer.invoke('rehearse', v),
 };
 contextBridge.exposeInMainWorld('handpost', api);

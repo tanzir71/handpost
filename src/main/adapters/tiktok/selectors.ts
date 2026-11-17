@@ -7,3 +7,5 @@ export const tiktokSelectors = withSelectorFallbacks({
   success: ['[data-e2e="toast"]'],
   post: ['[data-e2e="user-post-item"]'],
 });
+/** The logged-in account's own profile link (handle + profile URL are read from its href). */
+export const tiktokIdentity = ['a[data-e2e="nav-profile"]', '[data-handpost="profile-link"]'];

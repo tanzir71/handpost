@@ -1011,3 +1011,59 @@ textarea.csv {
 .queue-row--history .queue-row__evidence {
   margin-left: 168px;
 }
+.accounts-banner {
+  align-items: flex-start;
+}
+.accounts-banner > div {
+  display: grid;
+  gap: 4px;
+}
+.rehearse-help summary {
+  cursor: pointer;
+  font-weight: 500;
+}
+.rehearse-help p {
+  margin-top: 4px;
+}
+.account-live {
+  display: grid;
+  gap: 8px;
+}
+.account-live__actions {
+  display: flex;
+  gap: 8px;
+}
+.profile-url {
+  display: grid;
+  gap: 6px;
+}
+.profile-url small {
+  font-size: 12px;
+}
+.link-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--hp-accent-ink);
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rehearsal-result {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border-radius: var(--hp-radius-md);
+  background: var(--hp-bg-canvas);
+  border: 1px solid var(--hp-line-default);
+}
+.rehearsal-result img {
+  max-width: 100%;
+  border-radius: var(--hp-radius-sm);
+  border: 1px solid var(--hp-line-default);
+}

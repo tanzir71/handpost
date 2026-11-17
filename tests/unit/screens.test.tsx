@@ -29,6 +29,36 @@ const mockApi = vi.hoisted(() => ({
   openExternal: vi.fn(async () => {}),
   pacingToday: vi.fn(async () => []),
   breakers: vi.fn(async () => []),
+  browserInfo: vi.fn(async () => ({
+    channel: 'chrome',
+    found: false,
+    path: null,
+    version: null,
+    label: 'Google Chrome',
+    profiles: 'C:/data/profiles',
+  })),
+  setProfileUrl: vi.fn(async (input: unknown) => {
+    void input;
+    return { handle: '@tanzir', profileUrl: 'https://x.com/tanzir' };
+  }),
+  rehearse: vi.fn(async (input: unknown) => {
+    void input;
+    return {
+      attemptId: 1,
+      outcome: 'rehearsal' as const,
+      screenshotPath: 'shot.png',
+      screenshot: 'data:image/png;base64,AA==',
+      steps: [
+        {
+          name: 'discard draft',
+          startedAt: '2026-01-01T00:00:00Z',
+          finishedAt: '2026-01-01T00:00:01Z',
+          outcome: 'ok',
+        },
+      ],
+      error: null,
+    };
+  }),
 }));
 vi.mock('../../src/renderer/lib/api', () => ({ handpostApi: mockApi, isDemo: false }));
 import { Inbox } from '../../src/renderer/components/Inbox';
@@ -264,5 +294,67 @@ describe('Empty states', () => {
     cleanup();
     render(<Calendar targets={[]} onChanged={() => {}} />);
     expect(screen.getByRole('link', { name: 'Compose a post' })).toBeTruthy();
+  });
+});
+
+describe('Accounts live readiness', () => {
+  it('asks for the profile URL when a connected account has none, then saves it', async () => {
+    const onChanged = vi.fn();
+    render(
+      <Accounts
+        accounts={[
+          { id: 2, platform: 'x', status: 'ok', last_checked_at: null, handle: null, profile_url: null },
+        ]}
+        slots={[]}
+        settings={[]}
+        onChanged={onChanged}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText('Your profile URL'), {
+      target: { value: 'https://x.com/tanzir' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save profile URL' }));
+    await waitFor(() =>
+      expect(mockApi.setProfileUrl).toHaveBeenCalledWith({ platform: 'x', url: 'https://x.com/tanzir' }),
+    );
+    expect(onChanged).toHaveBeenCalled();
+  });
+  it('rehearses a connected platform and shows that nothing was posted', async () => {
+    render(
+      <Accounts
+        accounts={[
+          {
+            id: 2,
+            platform: 'x',
+            status: 'ok',
+            last_checked_at: null,
+            handle: '@me',
+            profile_url: 'https://x.com/me1',
+          },
+          {
+            id: 3,
+            platform: 'threads',
+            status: 'needs_login',
+            last_checked_at: null,
+            handle: null,
+            profile_url: null,
+          },
+        ]}
+        slots={[]}
+        settings={[]}
+        onChanged={() => {}}
+      />,
+    );
+    const buttons = screen.getAllByRole('button', { name: 'Rehearse' });
+    expect((buttons[1] as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(buttons[0]!);
+    expect(await screen.findByText('Rehearsal passed')).toBeTruthy();
+    expect(mockApi.rehearse).toHaveBeenCalledWith({ platform: 'x' });
+    expect(screen.getByText(/nothing was posted/)).toBeTruthy();
+    expect(screen.getByAltText('x composer filled during the rehearsal')).toBeTruthy();
+  });
+  it('shows an Install Google Chrome empty state when no browser was found', async () => {
+    render(<Accounts accounts={[]} slots={[]} settings={[]} onChanged={() => {}} />);
+    expect(await screen.findByRole('button', { name: 'Install Google Chrome' })).toBeTruthy();
   });
 });

@@ -7,3 +7,5 @@ export const xSelectors = withSelectorFallbacks({
   success: ['[data-testid="toast"]'],
   post: ['[data-testid="tweet"]'],
 });
+/** The logged-in account's own profile link (handle + profile URL are read from its href). */
+export const xIdentity = ['a[data-testid="AppTabBar_Profile_Link"]', '[data-handpost="profile-link"]'];

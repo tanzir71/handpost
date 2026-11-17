@@ -2,13 +2,22 @@ import { join } from 'node:path';
 import PQueue from 'p-queue';
 import type { BrowserEngine } from '../engine/browser';
 import type { HandpostDatabase } from '../db/database';
-import type { ErrorClass, MediaInput, PlatformId, PublishError, RenderedPost } from '../../shared/types';
+import type {
+  ErrorClass,
+  MediaInput,
+  PlatformId,
+  PublishError,
+  RenderedPost,
+  StepLog,
+} from '../../shared/types';
 import { getAdapter } from '../adapters';
 import type { PlatformAdapter } from '../adapters/types';
 import { StepReporter } from '../engine/reporter';
 import { CircuitBreaker } from './circuit-breaker';
 import { classifyError, retryDelay } from './retry';
 import { recalculatePostStatus } from './status';
+import { captureIdentity } from '../accounts/identity-store';
+import { isBrowserMissingError } from '../engine/browser-detect';
 
 type DueRow = {
   id: number;
@@ -20,8 +29,29 @@ type DueRow = {
   options_json: string;
   platform: PlatformId;
   profile_dir: string;
+  profile_url: string | null;
+  handle: string | null;
   attempt_count: number;
 };
+
+export interface SchedulerOptions {
+  /** False when no supported browser is installed; targets then wait as `needs_attention: chrome_missing`. */
+  browserReady?: () => boolean;
+}
+
+export interface RehearsalInput {
+  text: string;
+  media: MediaInput[];
+  options: Record<string, string | boolean>;
+}
+
+export interface RehearsalResult {
+  attemptId: number;
+  outcome: 'rehearsal' | 'failed' | 'needs_login' | 'chrome_missing';
+  screenshotPath: string | null;
+  steps: StepLog[];
+  error: string | null;
+}
 
 export class Scheduler {
   private timer?: ReturnType<typeof setInterval>;
@@ -36,6 +66,7 @@ export class Scheduler {
     private notify: (title: string, body: string) => void = () => {},
     private resolveAdapter: (id: PlatformId) => PlatformAdapter = getAdapter,
     private artifactDir = join(process.cwd(), 'handpost-data', 'artifacts'),
+    private options: SchedulerOptions = {},
   ) {
     this.breaker = new CircuitBreaker(db);
   }
@@ -79,7 +110,7 @@ export class Scheduler {
   async tick(now = new Date()) {
     const rows = this.db
       .prepare(
-        "SELECT t.*,p.base_text,a.platform,a.profile_dir FROM post_targets t JOIN posts p ON p.id=t.post_id JOIN accounts a ON a.id=t.account_id WHERE t.status='scheduled' AND t.jittered_at_utc<=? ORDER BY t.jittered_at_utc",
+        "SELECT t.*,p.base_text,a.platform,a.profile_dir,a.profile_url,a.handle FROM post_targets t JOIN posts p ON p.id=t.post_id JOIN accounts a ON a.id=t.account_id WHERE t.status='scheduled' AND t.jittered_at_utc<=? ORDER BY t.jittered_at_utc",
       )
       .all(now.toISOString()) as DueRow[];
     const opened = new Set<PlatformId>();
@@ -197,6 +228,7 @@ export class Scheduler {
       media: renderedMedia,
       options,
       artifactDir: this.artifactDir,
+      profileUrl: row.profile_url,
     };
   }
 
@@ -209,6 +241,10 @@ export class Scheduler {
           .prepare("UPDATE post_targets SET status='manual',error_code='platform_frozen' WHERE id=?")
           .run(row.id);
         this.recalculatePost(row.post_id);
+        return;
+      }
+      if (row.platform !== 'mock' && this.options.browserReady && !this.options.browserReady()) {
+        this.markBrowserMissing(row);
         return;
       }
       const adapter = this.resolveAdapter(row.platform);
@@ -240,6 +276,7 @@ export class Scheduler {
       this.db
         .prepare("UPDATE accounts SET status='ok',last_checked_at=CURRENT_TIMESTAMP WHERE id=?")
         .run(row.account_id);
+      if (!row.handle) await captureIdentity(this.db, row.platform, adapter, page);
       this.db.prepare('UPDATE post_targets SET attempt_count=attempt_count+1 WHERE id=?').run(row.id);
       await adapter.publish(ctx, post, reporter);
       const proof = await adapter.verify(ctx, post);
@@ -263,6 +300,10 @@ export class Scheduler {
       if (!proof.found)
         this.notify('Handpost could not verify post', 'The platform accepted it, but proof was not found.');
     } catch (error) {
+      if (isBrowserMissingError(error)) {
+        this.markBrowserMissing(row);
+        return;
+      }
       const e = error as Partial<PublishError>;
       const errorClass = (e.errorClass ?? classifyError(error)) as ErrorClass;
       if (errorClass === 'session')
@@ -311,6 +352,95 @@ export class Scheduler {
         `${row.platform}: ${String(e.message ?? error)}`,
       );
     }
+  }
+
+  /** No browser to drive: the target waits for the owner instead of failing (H6). */
+  private markBrowserMissing(row: DueRow) {
+    this.db
+      .prepare(
+        "UPDATE post_targets SET status='needs_attention',error_code='chrome_missing',error_detail=? WHERE id=?",
+      )
+      .run('Install Google Chrome (or Microsoft Edge), then retry this post from the Queue.', row.id);
+    this.recalculatePost(row.post_id);
+    this.notify('Handpost needs Google Chrome', 'Install Chrome or Edge, then retry from the Queue.');
+  }
+
+  /**
+   * Rehearse a platform: fill its real composer with a harmless post, screenshot it and discard it — the submit
+   * step is never reached (factory.ts). Runs on the same one-at-a-time queue as publishing, in a visible window,
+   * and is recorded as a `rehearsal` attempt on a hidden post that never appears in the queue.
+   */
+  async rehearse(platform: PlatformId, input: RehearsalInput): Promise<RehearsalResult> {
+    return (await this.queue.add(async () => {
+      const db = this.db;
+      const account = db.prepare('SELECT id,profile_url FROM accounts WHERE platform=?').get(platform) as
+        { id: number; profile_url: string | null } | undefined;
+      if (!account) throw new Error(`No account slot for ${platform}`);
+      const postId = Number(
+        db
+          .prepare("INSERT INTO posts(base_text,status,labels_json) VALUES (?,'rehearsal',?)")
+          .run(input.text, JSON.stringify(['rehearsal'])).lastInsertRowid,
+      );
+      const targetId = Number(
+        db
+          .prepare(
+            "INSERT INTO post_targets(post_id,account_id,status,options_json) VALUES (?,?,'rehearsal',?)",
+          )
+          .run(postId, account.id, JSON.stringify(input.options)).lastInsertRowid,
+      );
+      const started = new Date().toISOString();
+      const record = (
+        outcome: RehearsalResult['outcome'],
+        steps: StepLog[],
+        screenshotPath: string | null,
+        error: string | null,
+      ): RehearsalResult => {
+        const attemptId = Number(
+          db
+            .prepare(
+              'INSERT INTO publish_attempts(target_id,started_at,finished_at,outcome,step_log_json,screenshot_path,error_class) VALUES (?,?,?,?,?,?,?)',
+            )
+            .run(
+              targetId,
+              started,
+              new Date().toISOString(),
+              outcome,
+              JSON.stringify(steps),
+              screenshotPath,
+              null,
+            ).lastInsertRowid,
+        );
+        return { attemptId, outcome, screenshotPath, steps, error };
+      };
+      if (platform !== 'mock' && this.options.browserReady && !this.options.browserReady())
+        return record('chrome_missing', [], null, 'Google Chrome (or Microsoft Edge) is not installed');
+      const adapter = this.resolveAdapter(platform);
+      const post: RenderedPost = { ...input, artifactDir: this.artifactDir, profileUrl: account.profile_url };
+      const problems = adapter.validate(post);
+      if (problems.length) return record('failed', [], null, problems.join('; '));
+      let reporter: StepReporter | undefined;
+      try {
+        const ctx = await this.engine.context(platform, { headless: platform === 'mock', background: false });
+        const page = ctx.pages()[0] ?? (await ctx.newPage());
+        reporter = new StepReporter(page, this.artifactDir);
+        const session = await adapter.checkSession(ctx);
+        if (session !== 'ok') return record('needs_login', [], null, `Log in first (session: ${session})`);
+        await captureIdentity(db, platform, adapter, page);
+        const result = await adapter.publish(ctx, post, reporter, { rehearse: true });
+        return record('rehearsal', reporter.logs, result.screenshotPath ?? null, null);
+      } catch (error) {
+        if (isBrowserMissingError(error)) return record('chrome_missing', [], null, String(error));
+        const failed = [...(reporter?.logs ?? [])].reverse().find((log) => log.outcome === 'failed');
+        return record(
+          'failed',
+          reporter?.logs ?? [],
+          failed?.screenshotPath ?? null,
+          error instanceof Error ? error.message : String(error),
+        );
+      } finally {
+        await this.engine.close(platform).catch(() => undefined);
+      }
+    })) as RehearsalResult;
   }
 
   private recalculatePost(postId: number) {

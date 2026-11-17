@@ -7,3 +7,5 @@ export const youtubeSelectors = withSelectorFallbacks({
   success: ['ytcp-video-upload-progress[upload-status="complete"]'],
   post: ['ytcp-video-row'],
 });
+/** The logged-in account's own profile link (handle + profile URL are read from its href). */
+export const youtubeIdentity = ['a[href*="/channel/UC"]', '[data-handpost="profile-link"]'];

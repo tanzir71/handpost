@@ -6,6 +6,7 @@ import type { PlatformId } from '../../shared/types';
 import { handpostApi } from '../lib/api';
 import { formatWhen } from '../lib/format';
 import { summarizeSlots, WEEKDAYS } from '../lib/slots';
+import { AccountLive, BrowserFooter } from './AccountLive';
 import { Button, Card, ConfirmPopover, EmptyState, Modal, PlatformBadge, StatusPill, Toggle } from '../ui';
 
 export interface AccountsProps {
@@ -39,10 +40,24 @@ export function Accounts({ accounts, slots, settings, onChanged, renderExtra, fo
           </p>
         </div>
       </header>
-      <p className="hp-callout hp-callout--ink accounts-banner">
-        <ShieldCheck size={16} aria-hidden="true" /> <strong>Rehearse</strong> fills a platform's real
-        composer and stops before Post — the safe way to check a platform after it changes its page.
-      </p>
+      <div className="hp-callout hp-callout--ink accounts-banner">
+        <ShieldCheck size={16} aria-hidden="true" />
+        <div>
+          <p>
+            <strong>Rehearse</strong> fills a platform's real composer and stops before Post — the safe way to
+            check a platform after it changes its page. The filled composer is screenshotted, then discarded.
+          </p>
+          <details className="rehearse-help">
+            <summary>Check the browser fingerprint first</summary>
+            <p>
+              From a checkout of Handpost, <code>npm run fingerprint -- --chrome</code> opens your installed
+              Chrome with a throwaway profile and confirms it does not report automation (
+              <code>navigator.webdriver</code>, DevTools leaks). Run it once after installing or updating
+              Chrome.
+            </p>
+          </details>
+        </div>
+      </div>
       {real.length === 0 ? (
         <div className="hp-card">
           <EmptyState>No platforms are set up yet. Restart Handpost to create the account slots.</EmptyState>
@@ -93,7 +108,16 @@ export function Accounts({ accounts, slots, settings, onChanged, renderExtra, fo
                   <dt>Daily cap</dt>
                   <dd>{setting(`dailyCap:${platform}`, '10')} posts</dd>
                 </dl>
-                {renderExtra?.(account)}
+                {renderExtra ? (
+                  renderExtra(account)
+                ) : (
+                  <AccountLive
+                    platform={platform}
+                    connected={connected}
+                    profileUrl={account.profile_url}
+                    onChanged={onChanged}
+                  />
+                )}
                 <div className="account-card__actions">
                   {frozen ? (
                     <ConfirmPopover
@@ -135,7 +159,7 @@ export function Accounts({ accounts, slots, settings, onChanged, renderExtra, fo
           })}
         </div>
       )}
-      {footer && <footer className="accounts-footer t-mono-s secondary-text">{footer}</footer>}
+      {footer ?? <BrowserFooter />}
       {editing && (
         <SlotsModal
           platform={editing.platform as PlatformId}

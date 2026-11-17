@@ -13,7 +13,15 @@ export const PLATFORM_IDS = [
 export type PlatformId = (typeof PLATFORM_IDS)[number];
 export type AccountStatus = 'unknown' | 'ok' | 'needs_login' | 'challenged' | 'frozen';
 export type PostStatus =
-  'draft' | 'scheduled' | 'publishing' | 'published' | 'partial' | 'failed' | 'needs_attention' | 'cancelled';
+  | 'draft'
+  | 'scheduled'
+  | 'publishing'
+  | 'published'
+  | 'partial'
+  | 'failed'
+  | 'needs_attention'
+  | 'cancelled'
+  | 'rehearsal';
 export type TargetStatus =
   | 'draft'
   | 'scheduled'
@@ -24,7 +32,8 @@ export type TargetStatus =
   | 'needs_login'
   | 'needs_attention'
   | 'manual'
-  | 'cancelled';
+  | 'cancelled'
+  | 'rehearsal';
 export type ErrorClass = 'transient' | 'session' | 'content' | 'ui_drift' | 'suspected_detection';
 export type SessionState = 'ok' | 'logged_out' | 'challenged';
 export interface CapabilityManifest {
@@ -46,6 +55,8 @@ export interface RenderedPost {
   media: MediaInput[];
   options?: Record<string, string | boolean>;
   artifactDir?: string;
+  /** The account's own profile page (captured after login or set by the owner); verification opens it. */
+  profileUrl?: string | null;
 }
 export interface MediaInput {
   path: string;
@@ -59,6 +70,8 @@ export interface MediaInput {
 export interface PublishResult {
   submitted: boolean;
   signal?: string;
+  /** Rehearsal only: the screenshot of the filled composer taken before it was discarded. */
+  screenshotPath?: string;
 }
 export interface Verification {
   found: boolean;

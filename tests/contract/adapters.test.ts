@@ -21,8 +21,9 @@ const fast: AdapterInteractions = {
 beforeAll(async () => {
   root = await mkdtemp(join(tmpdir(), 'handpost-contract-'));
   server = createServer((request, response) => {
-    const platform =
-      new URL(request.url ?? '/', `http://127.0.0.1:${port}`).pathname.split('/').filter(Boolean)[0] ?? 'x';
+    const url = new URL(request.url ?? '/', `http://127.0.0.1:${port}`);
+    // Own-profile links in the fixtures carry ?fixture=<platform> so following them stays on the fixture.
+    const platform = url.searchParams.get('fixture') ?? url.pathname.split('/').filter(Boolean)[0] ?? 'x';
     const file =
       platform === 'instagram-checkpoint'
         ? 'tests/fixtures/instagram/checkpoint.html'
@@ -241,4 +242,104 @@ it('adds X thread continuations before submitting', async () => {
     reporter.logs.findIndex((log) => log.name === 'submit'),
   );
   await context.close();
+});
+
+/** The post each platform's fixture flow needs (same shape as the publish contract above). */
+async function fixturePost(config: (typeof adapterConfigs)[number], dir: string) {
+  const imagePath = join(dir, `${config.id}-rehearse.png`);
+  const videoPath = join(dir, `${config.id}-rehearse.mp4`);
+  await writeFile(imagePath, Buffer.from('89504e470d0a1a0a', 'hex'));
+  await writeFile(videoPath, Buffer.from('00000018667479706d703432', 'hex'));
+  const needsVideo = config.id === 'tiktok' || config.id === 'youtube';
+  const needsImage = config.id === 'instagram' || config.id === 'pinterest' || Boolean(config.altText);
+  const media = needsVideo
+    ? [{ path: videoPath, kind: 'video' as const }]
+    : needsImage
+      ? [
+          {
+            path: imagePath,
+            kind: 'image' as const,
+            ...(config.altText ? { altText: 'Fixture alt text' } : {}),
+          },
+        ]
+      : [];
+  const value = (key: string): string | boolean =>
+    key === 'madeForKids'
+      ? false
+      : key === 'visibility'
+        ? 'public'
+        : key === 'destinationUrl'
+          ? 'https://example.com'
+          : key === 'coverTime'
+            ? '2'
+            : `Fixture ${key}`;
+  return {
+    text: 'Fixture post prefix',
+    media,
+    options: Object.fromEntries((config.optionFields ?? []).map((field) => [field.key, value(field.key)])),
+    artifactDir: join(dir, 'rehearsals'),
+  };
+}
+
+describe.each(adapterConfigs.filter((config) => config.id !== 'mock'))('$id rehearsal contract', (config) => {
+  const fixtureUrl = `http://127.0.0.1:${port}/${config.id}`;
+  it('fills the composer, screenshots it and discards it without ever reaching submit', async () => {
+    const context = await browser.newContext();
+    let submitClicked = false;
+    // In-page detector: survives navigation (the rehearsal leaves for about:blank after discarding).
+    await context.exposeBinding('__handpostSubmitClicked', () => {
+      submitClicked = true;
+    });
+    await context.addInitScript(() => {
+      document.addEventListener(
+        'click',
+        (event) => {
+          const target = event.target as Element | null;
+          if (target?.closest('[data-handpost="submit"]'))
+            (window as unknown as { __handpostSubmitClicked: () => void }).__handpostSubmitClicked();
+        },
+        true,
+      );
+    });
+    const clickedSubmit: string[] = [];
+    const watching: AdapterInteractions = {
+      ...fast,
+      click: async (locator) => {
+        if (
+          await locator.evaluate((el) => Boolean(el.closest('[data-handpost="submit"]'))).catch(() => false)
+        )
+          clickedSubmit.push(await locator.evaluate((el) => el.outerHTML.slice(0, 80)));
+        await locator.click();
+      },
+    };
+    const adapter = createAdapter(
+      { ...config, home: fixtureUrl, compose: fixtureUrl, profile: fixtureUrl },
+      watching,
+    );
+    const post = await fixturePost(config, root);
+    const page = context.pages()[0] ?? (await context.newPage());
+    const reporter = new StepReporter(page, join(root, 'rehearsal-failures'));
+    const result = await adapter.publish(context, post, reporter, { rehearse: true });
+    expect(result).toMatchObject({ submitted: false, signal: 'rehearsal' });
+    await access(result.screenshotPath!);
+    const names = reporter.logs.map((log) => log.name);
+    expect(names).not.toContain('submit');
+    expect(names).not.toContain('wait for success');
+    expect(names).not.toContain('wait for processing');
+    expect(names[0]).toBe('open composer');
+    expect(names.slice(-2)).toEqual(['screenshot filled composer', 'discard draft']);
+    expect(clickedSubmit).toEqual([]);
+    expect(submitClicked).toBe(false);
+    expect(page.url()).toBe('about:blank');
+    await context.close();
+  }, 20_000);
+  it('reads the account handle from its own-profile link', async () => {
+    const page = await browser.newPage();
+    await page.goto(fixtureUrl);
+    const adapter = createAdapter(config, fast);
+    const identity = await adapter.identify!(page);
+    expect(identity?.handle, config.id).toBeTruthy();
+    expect(identity?.profileUrl.startsWith('https://')).toBe(true);
+    await page.close();
+  });
 });

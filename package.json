@@ -28,7 +28,8 @@
     "format": "prettier --write src tests scripts vite.config.ts vitest.config.ts tsup.config.ts eslint.config.js",
     "format:check": "prettier --check src tests scripts vite.config.ts vitest.config.ts tsup.config.ts eslint.config.js",
     "schema": "tsx scripts/schema.ts",
-    "inbox:smoke": "cross-env ELECTRON_RUN_AS_NODE=1 electron node_modules/tsx/dist/cli.mjs scripts/inbox-smoke.ts"
+    "inbox:smoke": "cross-env ELECTRON_RUN_AS_NODE=1 electron node_modules/tsx/dist/cli.mjs scripts/inbox-smoke.ts",
+    "browser:info": "tsx scripts/browser-info.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

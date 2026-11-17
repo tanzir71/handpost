@@ -4,6 +4,7 @@ import type { HandpostDatabase } from '../db/database';
 import type { BrowserEngine } from '../engine/browser';
 import { adapterConfigs } from '../adapters/configs';
 import { getAdapter } from '../adapters';
+import { captureIdentity } from './identity-store';
 
 interface ConnectOptions {
   pollMs?: number;
@@ -44,6 +45,7 @@ export async function connectAccount(
         resolved = true;
         if (timer) clearInterval(timer);
         persist('ok');
+        await captureIdentity(db, platform, getAdapter(platform), page);
         await engine.close(platform);
       }
     } finally {
