@@ -14,7 +14,7 @@ describe('database and repositories', () => {
     db.prepare('INSERT INTO schema_migrations(version) VALUES (1)').run();
     db.prepare("INSERT INTO posts(base_text,status) VALUES ('legacy','draft')").run();
     migrate(db);
-    expect(db.prepare('SELECT count(*) FROM schema_migrations').pluck().get()).toBe(3);
+    expect(db.prepare('SELECT count(*) FROM schema_migrations').pluck().get()).toBe(4);
     expect(db.prepare('SELECT base_text FROM posts').pluck().get()).toBe('legacy');
     expect(
       db
@@ -30,7 +30,7 @@ describe('database and repositories', () => {
   it('migrates idempotently and covers CRUD for every table', () => {
     const db = openDatabase();
     migrate(db);
-    expect(db.prepare('SELECT count(*) FROM schema_migrations').pluck().get()).toBe(3);
+    expect(db.prepare('SELECT count(*) FROM schema_migrations').pluck().get()).toBe(4);
     const repositories = new Repositories(db);
     const account = repositories.accounts.create({
       platform: 'x',

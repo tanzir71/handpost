@@ -1,0 +1,30 @@
+{
+  "handpost": 1,
+  "posts": [
+    {
+      "id": "release-notes-0-4-x",
+      "platforms": ["x"],
+      "when": "next-slot",
+      "source": "codex:release-notes",
+      "text": "Handpost 0.4 is out: inbox receipts, rehearsal mode and a calmer composer. 🧵",
+      "overrides": {
+        "x": {
+          "thread": [
+            "Inbox receipts: every file Claude or Codex drops gets a receipts/<id>.json that says exactly what happened.",
+            "Rehearsal mode fills the real composer and stops before Post — the safe way to check a platform after a UI change."
+          ]
+        }
+      },
+      "labels": ["release"]
+    },
+    {
+      "id": "release-notes-0-4-linkedin",
+      "platforms": ["linkedin", "bluesky"],
+      "when": "next-slot",
+      "mode": "review",
+      "source": "codex:release-notes",
+      "text": "Handpost 0.4 is out. Scheduled posts can now arrive as plain files from Claude or Codex, and every post ends with a receipt.",
+      "labels": ["release"]
+    }
+  ]
+}

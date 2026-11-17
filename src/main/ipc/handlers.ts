@@ -24,13 +24,20 @@ import { adapterConfigs } from '../adapters/configs';
 import { inspectMedia } from '../media/inspect';
 import { exportArchive, importArchive } from '../data/archive';
 import { applyCsvImport, planCsvImport } from '../data/csv';
-import { nextFreeSlot } from '../scheduler/slots';
+import { queuePost, savePost } from '../posts/create';
 import { connectAccount } from '../accounts/connect';
 import { recalculatePostStatus } from '../scheduler/status';
 import { CircuitBreaker } from '../scheduler/circuit-breaker';
 import type { SettingRow, TargetListRow } from '../../shared/rows';
+import type { InboxService } from '../inbox/service';
+import { inboxIdSchema } from '../../shared/ipc';
 
-export function registerHandlers(db: HandpostDatabase, engine: BrowserEngine, dataDir: string): void {
+export function registerHandlers(
+  db: HandpostDatabase,
+  engine: BrowserEngine,
+  dataDir: string,
+  inbox?: InboxService,
+): void {
   // Every payload is `unknown` until a zod schema parses it.
   const handle = (name: string, fn: (...args: unknown[]) => unknown) =>
     ipcMain.handle(name, (_event, ...args) => fn(...args));
@@ -57,82 +64,16 @@ export function registerHandlers(db: HandpostDatabase, engine: BrowserEngine, da
   }));
   handle('save-post', (raw) => {
     const input = postSaveSchema.parse(raw);
-    const tx = db.transaction(() => {
-      let id = input.id;
-      if (id)
-        db.prepare('UPDATE posts SET base_text=?,status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?').run(
-          input.text,
-          input.status,
-          id,
-        );
-      else
-        id = Number(
-          db.prepare('INSERT INTO posts(base_text,status) VALUES (?,?)').run(input.text, input.status)
-            .lastInsertRowid,
-        );
-      db.prepare("DELETE FROM post_targets WHERE post_id=? AND status IN ('draft','scheduled')").run(id);
-      for (const target of input.targets) {
-        if (input.status === 'scheduled' && !target.scheduledAt)
-          throw new Error('Scheduled targets require a date');
-        const scheduled = target.scheduledAt ? new Date(target.scheduledAt) : null;
-        db.prepare(
-          'INSERT INTO post_targets(post_id,account_id,override_text,first_comment,scheduled_at_utc,jittered_at_utc,status,options_json) VALUES (?,?,?,?,?,?,?,?)',
-        ).run(
-          id,
-          target.accountId,
-          target.overrideText ?? null,
-          target.firstComment ?? null,
-          scheduled?.toISOString() ?? null,
-          scheduled ? jitterDate(scheduled).toISOString() : null,
-          input.status,
-          JSON.stringify(target.options ?? {}),
-        );
-      }
-      return id;
+    return savePost(db, {
+      id: input.id,
+      text: input.text,
+      status: input.status,
+      targets: input.targets.map((target) => ({ ...target, scheduledAt: target.scheduledAt ?? null })),
     });
-    return tx();
   });
   handle('queue-post', (raw) => {
     const input = queuePostSchema.parse(raw);
-    return db.transaction(() => {
-      let id = input.id;
-      if (id)
-        db.prepare(
-          "UPDATE posts SET base_text=?,status='scheduled',updated_at=CURRENT_TIMESTAMP WHERE id=?",
-        ).run(input.text, id);
-      else
-        id = Number(
-          db.prepare("INSERT INTO posts(base_text,status) VALUES (?,'scheduled')").run(input.text)
-            .lastInsertRowid,
-        );
-      db.prepare("DELETE FROM post_targets WHERE post_id=? AND status IN ('draft','scheduled')").run(id);
-      for (const target of input.targets) {
-        const slots = db
-          .prepare('SELECT weekday,time_local AS timeLocal FROM queue_slots WHERE account_id=?')
-          .all(target.accountId) as Array<{ weekday: number; timeLocal: string }>;
-        const occupied = db
-          .prepare(
-            "SELECT scheduled_at_utc FROM post_targets WHERE account_id=? AND status IN ('scheduled','publishing')",
-          )
-          .pluck()
-          .all(target.accountId) as string[];
-        const scheduled = nextFreeSlot(slots, occupied, new Date());
-        if (!scheduled) throw new Error('No available queue slot; configure slots in Accounts.');
-        db.prepare(
-          'INSERT INTO post_targets(post_id,account_id,override_text,first_comment,scheduled_at_utc,jittered_at_utc,status,options_json) VALUES (?,?,?,?,?,?,?,?)',
-        ).run(
-          id,
-          target.accountId,
-          target.overrideText ?? null,
-          target.firstComment ?? null,
-          scheduled.toISOString(),
-          jitterDate(scheduled).toISOString(),
-          'scheduled',
-          JSON.stringify(target.options ?? {}),
-        );
-      }
-      return id;
-    })();
+    return queuePost(db, { id: input.id, text: input.text, targets: input.targets });
   });
   handle('reschedule', (raw) => {
     const v = rescheduleSchema.parse(raw);
@@ -286,6 +227,16 @@ export function registerHandlers(db: HandpostDatabase, engine: BrowserEngine, da
     }
     db.prepare("UPDATE post_targets SET status='manual' WHERE id=?").run(targetId);
     recalculatePostStatus(db, row.post_id);
+  });
+  handle('inbox-health', async () => (inbox ? await inbox.health() : null));
+  handle('inbox-list', () => inbox?.items() ?? []);
+  handle('inbox-approve', async (raw) => {
+    if (!inbox) throw new Error('The inbox is not running');
+    return inbox.approve(inboxIdSchema.parse(raw));
+  });
+  handle('inbox-reject', async (raw) => {
+    if (!inbox) throw new Error('The inbox is not running');
+    return inbox.reject(inboxIdSchema.parse(raw));
   });
   handle('open-external', async (rawUrl: unknown) => {
     await shell.openExternal(externalUrlSchema.parse(rawUrl));

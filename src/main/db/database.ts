@@ -19,6 +19,7 @@ export function migrate(db: HandpostDatabase): void {
     [1, '001_initial.sql'],
     [2, '002_target_options.sql'],
     [3, '003_media_size.sql'],
+    [4, '004_inbox.sql'],
   ] as const) {
     if (db.prepare('SELECT 1 FROM schema_migrations WHERE version=?').get(version)) continue;
     const candidates = [

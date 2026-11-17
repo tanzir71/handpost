@@ -1,20 +1,29 @@
 import type { HandpostDatabase } from '../db/database';
+import { postEvents } from '../posts/events';
+
+const STUCK = ['failed', 'needs_login', 'needs_attention', 'manual', 'unverified'];
+
+/** Derives a post's status from its targets' statuses. */
+export function derivePostStatus(statuses: string[]): string | null {
+  if (!statuses.length) return null;
+  const live = statuses.filter((value) => value !== 'cancelled');
+  if (!live.length) return 'cancelled';
+  if (live.every((value) => value === 'draft')) return 'draft';
+  if (live.every((value) => value === 'published'))
+    return statuses.length === live.length ? 'published' : 'partial';
+  if (live.some((value) => value === 'published')) return 'partial';
+  if (live.every((value) => STUCK.includes(value))) return 'failed';
+  if (live.some((value) => value === 'publishing')) return 'publishing';
+  return 'scheduled';
+}
 
 export function recalculatePostStatus(db: HandpostDatabase, postId: number): void {
   const statuses = db
     .prepare('SELECT status FROM post_targets WHERE post_id=?')
     .pluck()
     .all(postId) as string[];
-  if (!statuses.length) return;
-  let status = 'scheduled';
-  if (statuses.every((value) => value === 'published')) status = 'published';
-  else if (statuses.some((value) => value === 'published')) status = 'partial';
-  else if (
-    statuses.every((value) =>
-      ['failed', 'needs_login', 'needs_attention', 'manual', 'unverified'].includes(value),
-    )
-  )
-    status = 'failed';
-  else if (statuses.some((value) => value === 'publishing')) status = 'publishing';
-  db.prepare('UPDATE posts SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?').run(status, postId);
+  const status = derivePostStatus(statuses);
+  if (status)
+    db.prepare('UPDATE posts SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?').run(status, postId);
+  postEvents.emitChanged(postId);
 }

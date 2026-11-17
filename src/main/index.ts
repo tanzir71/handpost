@@ -1,6 +1,6 @@
-import { app, BrowserWindow, Menu, nativeImage, Notification, Tray } from 'electron';
+import { app, BrowserWindow, Menu, nativeImage, Notification, powerMonitor, Tray } from 'electron';
 import { join } from 'node:path';
-import { existsSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { openDatabase, type HandpostDatabase } from './db/database';
 import { BrowserEngine, resolveBrowserChannel } from './engine/browser';
 import { LEGACY_IMPORT_NOTICE, migrateLegacyData } from './migrate-legacy';
@@ -9,6 +9,9 @@ import { Scheduler } from './scheduler/scheduler';
 import { CircuitBreaker } from './scheduler/circuit-breaker';
 import { PLATFORM_IDS } from '../shared/types';
 import { createLocalLogger } from './logging';
+import { InboxService, SETTING_KEYS } from './inbox/service';
+import { defaultHandpostFolder, WRITER_FILE } from './inbox/paths';
+import { INBOX_PLATFORMS } from '../shared/inbox-schema';
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -18,12 +21,20 @@ let database: HandpostDatabase | null = null;
 let localLog: ReturnType<typeof createLocalLogger> | null = null;
 let trayTimer: ReturnType<typeof setInterval> | null = null;
 let shutdownReady = false;
+let inbox: InboxService | null = null;
 /** Set when the user really quits (tray menu or OS); otherwise closing the window only hides it. */
 let isQuitting = false;
 if (process.platform === 'win32') app.setAppUserModelId('com.tanzir.handpost');
 function resolveAsset(name: string): string {
   const candidates = [join(__dirname, 'assets', name), join(process.cwd(), 'src', 'main', 'assets', name)];
   return candidates.find((path) => existsSync(path)) ?? candidates[0]!;
+}
+/** Writer guides shipped with the app (copied next to the bundle; read from the repo in development). */
+function readIntegration(name: 'HANDPOST_WRITER.md' | 'AGENTS.md'): string {
+  const repo = name === 'AGENTS.md' ? ['codex', 'AGENTS.md'] : ['claude', 'handpost-inbox', 'SKILL.md'];
+  for (const path of [join(__dirname, 'integrations', name), join(process.cwd(), 'integrations', ...repo)])
+    if (existsSync(path)) return readFileSync(path, 'utf8');
+  return '';
 }
 function trayImage(danger: boolean) {
   return nativeImage.createFromPath(resolveAsset(danger ? 'tray-alert.png' : 'tray.png'));
@@ -60,7 +71,27 @@ async function boot() {
       platform === 'mock' ? 'MockSocial' : platform[0]!.toUpperCase() + platform.slice(1),
       join(dataDir, 'profiles', platform),
     );
-  registerHandlers(db, engine, dataDir);
+  const notify = (title: string, body: string) => {
+    if (db.prepare("SELECT value FROM settings WHERE key='notifications'").pluck().get() !== 'false')
+      new Notification({ title, body }).show();
+  };
+  const writerGuide = readIntegration(WRITER_FILE);
+  inbox = new InboxService({
+    db,
+    root:
+      (db.prepare('SELECT value FROM settings WHERE key=?').pluck().get(SETTING_KEYS.path) as
+        string | undefined) ?? defaultHandpostFolder(app.getPath('home')),
+    mediaStore: join(dataDir, 'media'),
+    appVersion: app.getVersion(),
+    // MockSocial is only accepted from the inbox in development smoke runs.
+    platforms: process.env.HANDPOST_INBOX_MOCK === '1' ? [...INBOX_PLATFORMS, 'mock'] : INBOX_PLATFORMS,
+    notify: (title, body) => {
+      localLog?.logger.info({ title }, 'Inbox notification');
+      notify(title, body);
+    },
+    layoutFiles: writerGuide ? { [WRITER_FILE]: writerGuide } : {},
+  });
+  registerHandlers(db, engine, dataDir, inbox);
   app.setLoginItemSettings({
     openAtLogin: db.prepare("SELECT value FROM settings WHERE key='launchAtLogin'").pluck().get() === 'true',
   });
@@ -77,6 +108,15 @@ async function boot() {
     join(dataDir, 'artifacts'),
   );
   scheduler.start();
+  await inbox
+    .start()
+    .catch((error: unknown) =>
+      localLog?.logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Inbox failed to start',
+      ),
+    );
+  powerMonitor.on('resume', () => void inbox?.rescan());
   mainWindow = new BrowserWindow({
     width: 1440,
     height: 960,
@@ -142,6 +182,8 @@ app.on('before-quit', (event) => {
   if (shutdownReady) return;
   event.preventDefault();
   void (async () => {
+    // The inbox stops first so no new post is committed while the scheduler drains.
+    await inbox?.stop().catch(() => undefined);
     await scheduler?.idle().catch(() => undefined);
     await engine?.close().catch(() => undefined);
     database?.close();

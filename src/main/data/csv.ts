@@ -1,5 +1,5 @@
 import type { HandpostDatabase } from '../db/database';
-import { jitterDate } from '../engine/humanizer';
+import { savePost } from '../posts/create';
 import { nextFreeSlot } from '../scheduler/slots';
 import type { CsvPlanRow } from '../../shared/rows';
 export type { CsvPlanRow };
@@ -55,15 +55,11 @@ export function planCsvImport(db: HandpostDatabase, csv: string, from = new Date
 }
 export function applyCsvImport(db: HandpostDatabase, rows: CsvPlanRow[]): void {
   db.transaction(() => {
-    for (const row of rows) {
-      const postId = Number(
-        db.prepare("INSERT INTO posts(base_text,status) VALUES (?,'scheduled')").run(row.text)
-          .lastInsertRowid,
-      );
-      const date = new Date(row.scheduledAt);
-      db.prepare(
-        "INSERT INTO post_targets(post_id,account_id,scheduled_at_utc,jittered_at_utc,status) VALUES (?,?,?,?, 'scheduled')",
-      ).run(postId, row.accountId, date.toISOString(), jitterDate(date).toISOString());
-    }
+    for (const row of rows)
+      savePost(db, {
+        text: row.text,
+        status: 'scheduled',
+        targets: [{ accountId: row.accountId, scheduledAt: row.scheduledAt }],
+      });
   })();
 }

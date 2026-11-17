@@ -83,3 +83,4 @@ export const csvImportSchema = z.object({
   csv: z.string().max(10_000_000),
   dryRun: z.boolean().default(true),
 });
+export const inboxIdSchema = z.string().regex(/^(file-[0-9a-f]{12}|[a-z0-9][a-z0-9._-]{0,79})$/);

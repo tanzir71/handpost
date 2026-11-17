@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tanzir71.github.io/handpost/schema/handpost-receipt.v1.schema.json",
+  "title": "Handpost receipt — protocol v1",
+  "description": "What Handpost writes to receipts/<id>.json for every inbox post id. Normative spec: docs/INBOX_PROTOCOL.md §8.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["handpost", "id", "state", "source", "file", "received_at", "updated_at", "mode", "warnings", "errors", "targets"],
+  "properties": {
+    "handpost": { "const": 1 },
+    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,79}$" },
+    "state": { "enum": ["waiting_media", "held", "draft", "scheduled", "publishing", "published", "partial", "failed", "cancelled", "rejected", "duplicate"] },
+    "source": { "type": ["string", "null"] },
+    "file": { "type": ["string", "null"] },
+    "received_at": { "$ref": "#/$defs/instant" },
+    "updated_at": { "$ref": "#/$defs/instant" },
+    "replaced_at": { "$ref": "#/$defs/instant" },
+    "mode": { "enum": ["schedule", "review", "draft"] },
+    "warnings": { "type": "array", "items": { "$ref": "#/$defs/issue" } },
+    "errors": { "type": "array", "items": { "$ref": "#/$defs/issue" } },
+    "targets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["platform", "status", "scheduled_at", "published_at", "url", "error"],
+        "properties": {
+          "platform": { "type": "string" },
+          "status": { "enum": ["draft", "scheduled", "publishing", "published", "unverified", "failed", "needs_login", "needs_attention", "manual", "cancelled"] },
+          "scheduled_at": { "oneOf": [{ "$ref": "#/$defs/instant" }, { "type": "null" }] },
+          "published_at": { "oneOf": [{ "$ref": "#/$defs/instant" }, { "type": "null" }] },
+          "url": { "type": ["string", "null"] },
+          "error": {
+            "oneOf": [
+              { "type": "null" },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["code", "class", "message"],
+                "properties": {
+                  "code": { "type": "string" },
+                  "class": { "enum": ["transient", "session", "content", "ui_drift", "suspected_detection"] },
+                  "message": { "type": "string" }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "instant": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]+)?Z$" },
+    "issue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "type": "string", "pattern": "^[a-z_]+$" },
+        "message": { "type": "string" },
+        "path": { "type": "string" },
+        "platform": { "type": "string" }
+      }
+    }
+  }
+}

@@ -96,6 +96,7 @@ export class Scheduler {
         .prepare("UPDATE post_targets SET status='publishing' WHERE id=? AND status='scheduled'")
         .run(row.id).changes;
       if (!changed) continue;
+      this.recalculatePost(row.post_id);
       if (row.platform !== 'mock')
         this.nextAllowed.set(row.platform, now.getTime() + (row.platform === 'instagram' ? 10 : 3) * 60_000);
       opened.add(row.platform);
