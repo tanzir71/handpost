@@ -34,7 +34,8 @@
     "dist": "npm run build && electron-builder --publish never",
     "dist:dir": "npm run build && electron-builder --dir --publish never",
     "smoke:packaged": "tsx scripts/packaged-smoke.ts",
-    "website:shot": "node scripts/site-shot.mjs"
+    "website:shot": "node scripts/site-shot.mjs",
+    "drift-audit": "tsx scripts/drift-audit.ts"
   },
   "dependencies": {
     "adm-zip": "^0.5.18",
