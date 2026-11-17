@@ -1,1 +1,1 @@
-export { renderTemplate,templateVariables } from '../../shared/templates';
+export { renderTemplate, templateVariables } from '../../shared/templates';

@@ -26,7 +26,15 @@ export function BrandMark({ className, size = 36 }: BrandMarkProps) {
       xmlns="http://www.w3.org/2000/svg"
     >
       <path d={STAMP} fill="#B8351F" />
-      <rect opacity="0.7" x="4.03125" y="4.03125" width="21.9375" height="27.9375" stroke="#FFFFFF" strokeWidth="0.5625" />
+      <rect
+        opacity="0.7"
+        x="4.03125"
+        y="4.03125"
+        width="21.9375"
+        height="27.9375"
+        stroke="#FFFFFF"
+        strokeWidth="0.5625"
+      />
       <path d={LETTER_H} fill="#FFFFFF" />
       <path d={DENOMINATION} fill="#FFFFFF" />
     </svg>

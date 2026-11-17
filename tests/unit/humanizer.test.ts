@@ -1,4 +1,51 @@
-import { describe,expect,it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { vi } from 'vitest';
-import { humanClick,humanType,jitterDate,thinkDelayMs,typingDelayMs } from '../../src/main/engine/humanizer';
-describe('humanizer statistical bounds',()=>{it('keeps typing within 60–140 WPM',()=>{for(let i=0;i<1000;i++){const delay=typingDelayMs();expect(delay).toBeGreaterThanOrEqual(60_000/(140*5));expect(delay).toBeLessThanOrEqual(60_000/(60*5));}});it('thinks for 1–4 seconds',()=>{for(let i=0;i<100;i++)expect(thinkDelayMs()).toBeGreaterThanOrEqual(1000);expect(thinkDelayMs(()=>1)).toBe(4000);});it('jitters within ±90 seconds',()=>{const date=new Date('2026-01-01T00:00:00Z');expect(jitterDate(date,()=>0).toISOString()).toBe('2025-12-31T23:58:30.000Z');expect(jitterDate(date,()=>1).toISOString()).toBe('2026-01-01T00:01:30.000Z');});it('uses human keystrokes for short bodies and paste-like fill for long bodies',async()=>{const locator={fill:vi.fn(),pressSequentially:vi.fn(),page:()=>({waitForTimeout:vi.fn()})} as any;await humanType(locator,'short',()=>1);expect(locator.pressSequentially).toHaveBeenCalledTimes(5);await humanType(locator,'x'.repeat(401),()=>1);expect(locator.fill).toHaveBeenCalledWith('x'.repeat(401));});it('scrolls and moves the pointer before clicking',async()=>{const move=vi.fn();const locator={scrollIntoViewIfNeeded:vi.fn(),boundingBox:vi.fn(async()=>({x:10,y:20,width:100,height:40})),page:()=>({mouse:{move}}),click:vi.fn()} as any;await humanClick(locator);expect(locator.scrollIntoViewIfNeeded).toHaveBeenCalledOnce();expect(move).toHaveBeenCalledWith(expect.any(Number),expect.any(Number),{steps:8});expect(locator.click).toHaveBeenCalledOnce();});});
+import {
+  humanClick,
+  humanType,
+  jitterDate,
+  thinkDelayMs,
+  typingDelayMs,
+} from '../../src/main/engine/humanizer';
+describe('humanizer statistical bounds', () => {
+  it('keeps typing within 60–140 WPM', () => {
+    for (let i = 0; i < 1000; i++) {
+      const delay = typingDelayMs();
+      expect(delay).toBeGreaterThanOrEqual(60_000 / (140 * 5));
+      expect(delay).toBeLessThanOrEqual(60_000 / (60 * 5));
+    }
+  });
+  it('thinks for 1–4 seconds', () => {
+    for (let i = 0; i < 100; i++) expect(thinkDelayMs()).toBeGreaterThanOrEqual(1000);
+    expect(thinkDelayMs(() => 1)).toBe(4000);
+  });
+  it('jitters within ±90 seconds', () => {
+    const date = new Date('2026-01-01T00:00:00Z');
+    expect(jitterDate(date, () => 0).toISOString()).toBe('2025-12-31T23:58:30.000Z');
+    expect(jitterDate(date, () => 1).toISOString()).toBe('2026-01-01T00:01:30.000Z');
+  });
+  it('uses human keystrokes for short bodies and paste-like fill for long bodies', async () => {
+    const locator = {
+      fill: vi.fn(),
+      pressSequentially: vi.fn(),
+      page: () => ({ waitForTimeout: vi.fn() }),
+    } as any;
+    await humanType(locator, 'short', () => 1);
+    expect(locator.pressSequentially).toHaveBeenCalledTimes(5);
+    await humanType(locator, 'x'.repeat(401), () => 1);
+    expect(locator.fill).toHaveBeenCalledWith('x'.repeat(401));
+  });
+  it('scrolls and moves the pointer before clicking', async () => {
+    const move = vi.fn();
+    const locator = {
+      scrollIntoViewIfNeeded: vi.fn(),
+      boundingBox: vi.fn(async () => ({ x: 10, y: 20, width: 100, height: 40 })),
+      page: () => ({ mouse: { move } }),
+      click: vi.fn(),
+    } as any;
+    await humanClick(locator);
+    expect(locator.scrollIntoViewIfNeeded).toHaveBeenCalledOnce();
+    expect(move).toHaveBeenCalledWith(expect.any(Number), expect.any(Number), { steps: 8 });
+    expect(locator.click).toHaveBeenCalledOnce();
+  });
+});

@@ -1,2 +1,2 @@
 import { capabilities } from '../../../shared/capabilities';
-export const instagramCapabilities=capabilities.instagram;
+export const instagramCapabilities = capabilities.instagram;

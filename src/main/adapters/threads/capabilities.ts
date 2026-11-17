@@ -1,2 +1,2 @@
 import { capabilities } from '../../../shared/capabilities';
-export const threadsCapabilities=capabilities.threads;
+export const threadsCapabilities = capabilities.threads;

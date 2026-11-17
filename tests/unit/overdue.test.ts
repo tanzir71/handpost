@@ -1,4 +1,20 @@
-import { describe,expect,it,vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { openDatabase } from '../../src/main/db/database';
 import { Scheduler } from '../../src/main/scheduler/scheduler';
-describe('startup overdue handling',()=>{it('flags posts older than two hours instead of silently publishing',async()=>{const db=openDatabase();db.prepare("INSERT INTO accounts(platform,display_name,profile_dir,status) VALUES ('mock','Mock','mock','ok')").run();db.prepare("INSERT INTO posts(base_text,status) VALUES ('old','scheduled')").run();db.prepare("INSERT INTO post_targets(post_id,account_id,scheduled_at_utc,jittered_at_utc,status) VALUES (1,1,'2026-01-01T00:00:00Z','2026-01-01T00:00:00Z','scheduled')").run();const engine={context:vi.fn()} as any;const scheduler=new Scheduler(db,engine);await scheduler.handleOverdue(new Date('2026-01-01T03:00:01Z'));expect(db.prepare('SELECT status FROM post_targets').pluck().get()).toBe('needs_attention');db.close();});});
+describe('startup overdue handling', () => {
+  it('flags posts older than two hours instead of silently publishing', async () => {
+    const db = openDatabase();
+    db.prepare(
+      "INSERT INTO accounts(platform,display_name,profile_dir,status) VALUES ('mock','Mock','mock','ok')",
+    ).run();
+    db.prepare("INSERT INTO posts(base_text,status) VALUES ('old','scheduled')").run();
+    db.prepare(
+      "INSERT INTO post_targets(post_id,account_id,scheduled_at_utc,jittered_at_utc,status) VALUES (1,1,'2026-01-01T00:00:00Z','2026-01-01T00:00:00Z','scheduled')",
+    ).run();
+    const engine = { context: vi.fn() } as any;
+    const scheduler = new Scheduler(db, engine);
+    await scheduler.handleOverdue(new Date('2026-01-01T03:00:01Z'));
+    expect(db.prepare('SELECT status FROM post_targets').pluck().get()).toBe('needs_attention');
+    db.close();
+  });
+});

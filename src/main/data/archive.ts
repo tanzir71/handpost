@@ -3,28 +3,190 @@ import { basename, join } from 'node:path';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import type { HandpostDatabase } from '../db/database';
 
-interface AttemptRow{[key:string]:unknown;id:number;step_log_json:string;screenshot_path?:string|null;}
-interface StepArtifact{[key:string]:unknown;screenshotPath?:string;screenshotArchivePath?:string;}
-
-export function exportArchive(db:HandpostDatabase,output:string):void{
- const zip=new AdmZip();const media=db.prepare('SELECT * FROM media').all() as any[];
- const addArtifact=(path:string|undefined|null,archivePath:string)=>{if(!path||!existsSync(path))return undefined;zip.addLocalFile(path,archivePath.slice(0,archivePath.lastIndexOf('/')),basename(archivePath));return archivePath;};
- const attempts=(db.prepare('SELECT * FROM publish_attempts').all() as AttemptRow[]).map(row=>{let logs:StepArtifact[]=[];try{const value=JSON.parse(row.step_log_json);if(Array.isArray(value))logs=value;}catch{logs=[];}const archivedLogs=logs.map((log,index)=>({...log,...(addArtifact(log.screenshotPath,`artifacts/${row.id}/step-${index}-${basename(log.screenshotPath??'failure.png')}`)?{screenshotArchivePath:`artifacts/${row.id}/step-${index}-${basename(log.screenshotPath??'failure.png')}`}:{})}));const screenshotArchivePath=addArtifact(row.screenshot_path,`artifacts/${row.id}/proof-${basename(row.screenshot_path??'proof.png')}`);return{...row,step_log_json:JSON.stringify(archivedLogs),...(screenshotArchivePath?{screenshot_archive_path:screenshotArchivePath}:{})};});
- const payload={version:1,exportedAt:new Date().toISOString(),posts:db.prepare('SELECT * FROM posts').all(),targets:db.prepare('SELECT t.*,a.platform FROM post_targets t JOIN accounts a ON a.id=t.account_id').all(),media:media.map(row=>({...row,archive_path:`media/${row.post_id}/${basename(row.path)}`})),attempts,slots:db.prepare('SELECT s.*,a.platform FROM queue_slots s JOIN accounts a ON a.id=s.account_id').all(),templates:db.prepare('SELECT * FROM templates').all(),settings:db.prepare("SELECT * FROM settings WHERE key NOT LIKE 'breaker:%'").all()};
- zip.addFile('handpost.json',Buffer.from(JSON.stringify(payload,null,2)));for(const row of media)zip.addLocalFile(row.path,`media/${row.post_id}`);zip.writeZip(output);
+interface AttemptRow {
+  [key: string]: unknown;
+  id: number;
+  step_log_json: string;
+  screenshot_path?: string | null;
+}
+interface StepArtifact {
+  [key: string]: unknown;
+  screenshotPath?: string;
+  screenshotArchivePath?: string;
 }
 
-export function importArchive(db:HandpostDatabase,input:string,dataDir:string):void{
- const zip=new AdmZip(input);const manifest=zip.getEntry('handpost.json')??zip.getEntry('relay.json');if(!manifest)throw new Error('Invalid Handpost archive: handpost.json missing');const data=JSON.parse(manifest.getData().toString('utf8'));if(data.version!==1)throw new Error(`Unsupported Handpost archive version: ${data.version}`);
- const mediaRoot=join(dataDir,'media');const artifactRoot=join(dataDir,'artifacts','imported');
- const accountId=(platform:string)=>{const id=db.prepare('SELECT id FROM accounts WHERE platform=?').pluck().get(platform);if(!id)throw new Error(`Missing account for ${platform}`);return id;};
- const restoreArtifact=(archivePath:unknown,fallback:unknown)=>{if(typeof archivePath!=='string')return typeof fallback==='string'?fallback:null;const entry=zip.getEntry(archivePath);if(!entry)throw new Error(`Archive artifact missing: ${archivePath}`);mkdirSync(artifactRoot,{recursive:true});const path=join(artifactRoot,`${Date.now()}-${archivePath.replace(/[^a-zA-Z0-9._-]/g,'-')}`);writeFileSync(path,entry.getData());return path;};
- db.transaction(()=>{
-  for(const table of ['publish_attempts','post_targets','media','posts','queue_slots','templates'])db.exec(`DELETE FROM ${table}`);db.exec("DELETE FROM settings WHERE key NOT LIKE 'breaker:%'");
-  for(const row of data.posts??[])db.prepare('INSERT INTO posts(id,base_text,created_at,updated_at,status) VALUES (?,?,?,?,?)').run(row.id,row.base_text,row.created_at,row.updated_at,row.status);
-  for(const row of data.targets??[])db.prepare('INSERT INTO post_targets(id,post_id,account_id,override_text,first_comment,scheduled_at_utc,jittered_at_utc,status,attempt_count,published_url,error_code,error_detail,options_json) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)').run(row.id,row.post_id,accountId(row.platform),row.override_text,row.first_comment,row.scheduled_at_utc,row.jittered_at_utc,row.status,row.attempt_count,row.published_url,row.error_code,row.error_detail,row.options_json??'{}');
-  for(const row of data.media??[]){const entry=zip.getEntry(row.archive_path);if(!entry)throw new Error(`Archive media missing: ${row.archive_path}`);const dir=join(mediaRoot,String(row.post_id));mkdirSync(dir,{recursive:true});const path=join(dir,basename(row.archive_path));writeFileSync(path,entry.getData());db.prepare('INSERT INTO media(id,post_id,path,kind,width,height,duration_s,size_bytes,order_idx,alt_text) VALUES (?,?,?,?,?,?,?,?,?,?)').run(row.id,row.post_id,path,row.kind,row.width,row.height,row.duration_s,row.size_bytes??entry.getData().byteLength,row.order_idx,row.alt_text);}
-  for(const row of data.attempts??[]){let logs:StepArtifact[]=[];try{const value=JSON.parse(row.step_log_json);if(Array.isArray(value))logs=value;}catch{logs=[];}const restoredLogs=logs.map(log=>({...log,...(log.screenshotArchivePath?{screenshotPath:restoreArtifact(log.screenshotArchivePath,log.screenshotPath)}:{})}));const screenshotPath=restoreArtifact(row.screenshot_archive_path,row.screenshot_path);db.prepare('INSERT INTO publish_attempts(id,target_id,started_at,finished_at,outcome,step_log_json,screenshot_path,error_class) VALUES (?,?,?,?,?,?,?,?)').run(row.id,row.target_id,row.started_at,row.finished_at,row.outcome,JSON.stringify(restoredLogs),screenshotPath,row.error_class);}
-  for(const row of data.slots??[])db.prepare('INSERT INTO queue_slots(id,account_id,weekday,time_local) VALUES (?,?,?,?)').run(row.id,accountId(row.platform),row.weekday,row.time_local);for(const row of data.templates??[])db.prepare('INSERT INTO templates(id,name,body,variables_json) VALUES (?,?,?,?)').run(row.id,row.name,row.body,row.variables_json);for(const row of data.settings??[])db.prepare('INSERT INTO settings(key,value) VALUES (?,?)').run(row.key,row.value);
- })();
+export function exportArchive(db: HandpostDatabase, output: string): void {
+  const zip = new AdmZip();
+  const media = db.prepare('SELECT * FROM media').all() as any[];
+  const addArtifact = (path: string | undefined | null, archivePath: string) => {
+    if (!path || !existsSync(path)) return undefined;
+    zip.addLocalFile(path, archivePath.slice(0, archivePath.lastIndexOf('/')), basename(archivePath));
+    return archivePath;
+  };
+  const attempts = (db.prepare('SELECT * FROM publish_attempts').all() as AttemptRow[]).map((row) => {
+    let logs: StepArtifact[] = [];
+    try {
+      const value = JSON.parse(row.step_log_json);
+      if (Array.isArray(value)) logs = value;
+    } catch {
+      logs = [];
+    }
+    const archivedLogs = logs.map((log, index) => ({
+      ...log,
+      ...(addArtifact(
+        log.screenshotPath,
+        `artifacts/${row.id}/step-${index}-${basename(log.screenshotPath ?? 'failure.png')}`,
+      )
+        ? {
+            screenshotArchivePath: `artifacts/${row.id}/step-${index}-${basename(log.screenshotPath ?? 'failure.png')}`,
+          }
+        : {}),
+    }));
+    const screenshotArchivePath = addArtifact(
+      row.screenshot_path,
+      `artifacts/${row.id}/proof-${basename(row.screenshot_path ?? 'proof.png')}`,
+    );
+    return {
+      ...row,
+      step_log_json: JSON.stringify(archivedLogs),
+      ...(screenshotArchivePath ? { screenshot_archive_path: screenshotArchivePath } : {}),
+    };
+  });
+  const payload = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    posts: db.prepare('SELECT * FROM posts').all(),
+    targets: db
+      .prepare('SELECT t.*,a.platform FROM post_targets t JOIN accounts a ON a.id=t.account_id')
+      .all(),
+    media: media.map((row) => ({ ...row, archive_path: `media/${row.post_id}/${basename(row.path)}` })),
+    attempts,
+    slots: db.prepare('SELECT s.*,a.platform FROM queue_slots s JOIN accounts a ON a.id=s.account_id').all(),
+    templates: db.prepare('SELECT * FROM templates').all(),
+    settings: db.prepare("SELECT * FROM settings WHERE key NOT LIKE 'breaker:%'").all(),
+  };
+  zip.addFile('handpost.json', Buffer.from(JSON.stringify(payload, null, 2)));
+  for (const row of media) zip.addLocalFile(row.path, `media/${row.post_id}`);
+  zip.writeZip(output);
+}
+
+export function importArchive(db: HandpostDatabase, input: string, dataDir: string): void {
+  const zip = new AdmZip(input);
+  const manifest = zip.getEntry('handpost.json') ?? zip.getEntry('relay.json');
+  if (!manifest) throw new Error('Invalid Handpost archive: handpost.json missing');
+  const data = JSON.parse(manifest.getData().toString('utf8'));
+  if (data.version !== 1) throw new Error(`Unsupported Handpost archive version: ${data.version}`);
+  const mediaRoot = join(dataDir, 'media');
+  const artifactRoot = join(dataDir, 'artifacts', 'imported');
+  const accountId = (platform: string) => {
+    const id = db.prepare('SELECT id FROM accounts WHERE platform=?').pluck().get(platform);
+    if (!id) throw new Error(`Missing account for ${platform}`);
+    return id;
+  };
+  const restoreArtifact = (archivePath: unknown, fallback: unknown) => {
+    if (typeof archivePath !== 'string') return typeof fallback === 'string' ? fallback : null;
+    const entry = zip.getEntry(archivePath);
+    if (!entry) throw new Error(`Archive artifact missing: ${archivePath}`);
+    mkdirSync(artifactRoot, { recursive: true });
+    const path = join(artifactRoot, `${Date.now()}-${archivePath.replace(/[^a-zA-Z0-9._-]/g, '-')}`);
+    writeFileSync(path, entry.getData());
+    return path;
+  };
+  db.transaction(() => {
+    for (const table of ['publish_attempts', 'post_targets', 'media', 'posts', 'queue_slots', 'templates'])
+      db.exec(`DELETE FROM ${table}`);
+    db.exec("DELETE FROM settings WHERE key NOT LIKE 'breaker:%'");
+    for (const row of data.posts ?? [])
+      db.prepare('INSERT INTO posts(id,base_text,created_at,updated_at,status) VALUES (?,?,?,?,?)').run(
+        row.id,
+        row.base_text,
+        row.created_at,
+        row.updated_at,
+        row.status,
+      );
+    for (const row of data.targets ?? [])
+      db.prepare(
+        'INSERT INTO post_targets(id,post_id,account_id,override_text,first_comment,scheduled_at_utc,jittered_at_utc,status,attempt_count,published_url,error_code,error_detail,options_json) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
+      ).run(
+        row.id,
+        row.post_id,
+        accountId(row.platform),
+        row.override_text,
+        row.first_comment,
+        row.scheduled_at_utc,
+        row.jittered_at_utc,
+        row.status,
+        row.attempt_count,
+        row.published_url,
+        row.error_code,
+        row.error_detail,
+        row.options_json ?? '{}',
+      );
+    for (const row of data.media ?? []) {
+      const entry = zip.getEntry(row.archive_path);
+      if (!entry) throw new Error(`Archive media missing: ${row.archive_path}`);
+      const dir = join(mediaRoot, String(row.post_id));
+      mkdirSync(dir, { recursive: true });
+      const path = join(dir, basename(row.archive_path));
+      writeFileSync(path, entry.getData());
+      db.prepare(
+        'INSERT INTO media(id,post_id,path,kind,width,height,duration_s,size_bytes,order_idx,alt_text) VALUES (?,?,?,?,?,?,?,?,?,?)',
+      ).run(
+        row.id,
+        row.post_id,
+        path,
+        row.kind,
+        row.width,
+        row.height,
+        row.duration_s,
+        row.size_bytes ?? entry.getData().byteLength,
+        row.order_idx,
+        row.alt_text,
+      );
+    }
+    for (const row of data.attempts ?? []) {
+      let logs: StepArtifact[] = [];
+      try {
+        const value = JSON.parse(row.step_log_json);
+        if (Array.isArray(value)) logs = value;
+      } catch {
+        logs = [];
+      }
+      const restoredLogs = logs.map((log) => ({
+        ...log,
+        ...(log.screenshotArchivePath
+          ? { screenshotPath: restoreArtifact(log.screenshotArchivePath, log.screenshotPath) }
+          : {}),
+      }));
+      const screenshotPath = restoreArtifact(row.screenshot_archive_path, row.screenshot_path);
+      db.prepare(
+        'INSERT INTO publish_attempts(id,target_id,started_at,finished_at,outcome,step_log_json,screenshot_path,error_class) VALUES (?,?,?,?,?,?,?,?)',
+      ).run(
+        row.id,
+        row.target_id,
+        row.started_at,
+        row.finished_at,
+        row.outcome,
+        JSON.stringify(restoredLogs),
+        screenshotPath,
+        row.error_class,
+      );
+    }
+    for (const row of data.slots ?? [])
+      db.prepare('INSERT INTO queue_slots(id,account_id,weekday,time_local) VALUES (?,?,?,?)').run(
+        row.id,
+        accountId(row.platform),
+        row.weekday,
+        row.time_local,
+      );
+    for (const row of data.templates ?? [])
+      db.prepare('INSERT INTO templates(id,name,body,variables_json) VALUES (?,?,?,?)').run(
+        row.id,
+        row.name,
+        row.body,
+        row.variables_json,
+      );
+    for (const row of data.settings ?? [])
+      db.prepare('INSERT INTO settings(key,value) VALUES (?,?)').run(row.key, row.value);
+  })();
 }

@@ -1,3 +1,20 @@
-import { describe,expect,it } from 'vitest';
-import { mediaWarnings,metadataFromProbe,validateMedia } from '../../src/main/media/inspect';
-describe('media validation',()=>{it('reads image dimensions from ffprobe video streams',()=>expect(metadataFromProbe({path:'image.jpg',kind:'image',sizeBytes:10},{streams:[{codec_type:'video',width:1200,height:800}]})).toMatchObject({width:1200,height:800}));it('rejects an oversized-duration Shorts video',()=>expect(validateMedia('youtube',[{path:'long.mp4',kind:'video',sizeBytes:100,durationS:61}])).toContain('Video exceeds 60 seconds'));it('warns without blocking about Instagram crop ratios',()=>{const media=[{path:'wide.jpg',kind:'image' as const,sizeBytes:100,width:2000,height:500}];expect(mediaWarnings('instagram',media)[0]).toMatch(/crop/);expect(validateMedia('instagram',media)).toEqual([]);});});
+import { describe, expect, it } from 'vitest';
+import { mediaWarnings, metadataFromProbe, validateMedia } from '../../src/main/media/inspect';
+describe('media validation', () => {
+  it('reads image dimensions from ffprobe video streams', () =>
+    expect(
+      metadataFromProbe(
+        { path: 'image.jpg', kind: 'image', sizeBytes: 10 },
+        { streams: [{ codec_type: 'video', width: 1200, height: 800 }] },
+      ),
+    ).toMatchObject({ width: 1200, height: 800 }));
+  it('rejects an oversized-duration Shorts video', () =>
+    expect(
+      validateMedia('youtube', [{ path: 'long.mp4', kind: 'video', sizeBytes: 100, durationS: 61 }]),
+    ).toContain('Video exceeds 60 seconds'));
+  it('warns without blocking about Instagram crop ratios', () => {
+    const media = [{ path: 'wide.jpg', kind: 'image' as const, sizeBytes: 100, width: 2000, height: 500 }];
+    expect(mediaWarnings('instagram', media)[0]).toMatch(/crop/);
+    expect(validateMedia('instagram', media)).toEqual([]);
+  });
+});

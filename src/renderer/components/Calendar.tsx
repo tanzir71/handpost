@@ -1,5 +1,118 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import { handpostApi } from '../lib/api';
-interface CalendarProps{targets:any[];onChanged:()=>void;}
-export function Calendar({targets,onChanged}:CalendarProps){const [cursor,setCursor]=useState(()=>new Date());const [view,setView]=useState<'month'|'week'>('month');const year=cursor.getFullYear(),month=cursor.getMonth();const first=view==='month'?new Date(year,month,1):new Date(year,month,cursor.getDate()-cursor.getDay());const count=view==='month'?42:7;const cells=Array.from({length:count},(_,index)=>new Date(first.getFullYear(),first.getMonth(),first.getDate()+index-(view==='month'?first.getDay():0)));const shift=(delta:number)=>setCursor(view==='month'?new Date(year,month+delta,1):new Date(year,month,cursor.getDate()+delta*7));return <main className="screen"><header className="screen-header"><div><p className="eyebrow">CALENDAR</p><h1>{view==='month'?cursor.toLocaleString(undefined,{month:'long',year:'numeric'}):`Week of ${cells[0]!.toLocaleDateString()}`}</h1><p>Drag a post to reschedule it in local time. Keyboard: focus a post and use Left/Right Arrow.</p></div><div className="calendar-controls"><button onClick={()=>setView('month')} aria-pressed={view==='month'}>Month</button><button onClick={()=>setView('week')} aria-pressed={view==='week'}>Week</button><button onClick={()=>shift(-1)} aria-label={`Previous ${view}`}><ChevronLeft/></button><button onClick={()=>setCursor(new Date())}>Today</button><button onClick={()=>shift(1)} aria-label={`Next ${view}`}><ChevronRight/></button></div></header><section className={`calendar ${view}`}><div className="weekdays">{['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(day=><strong key={day}>{day}</strong>)}</div><div className="calendar-grid">{cells.map(date=>{const dateKey=date.toDateString();const rows=targets.filter(target=>target.scheduled_at_utc&&new Date(target.scheduled_at_utc).toDateString()===dateKey);return <div key={date.toISOString()} className={view==='month'&&date.getMonth()!==month?'day outside':'day'} onDragOver={event=>event.preventDefault()} onDrop={async event=>{const id=Number(event.dataTransfer.getData('target'));const original=targets.find(target=>target.id===id);if(!original)return;const time=new Date(original.scheduled_at_utc);date.setHours(time.getHours(),time.getMinutes());await handpostApi.reschedule({targetId:id,scheduledAt:date.toISOString()});onChanged();}}><span>{date.getDate()}</span>{rows.map(row=><button draggable aria-label={`${row.platform} post at ${new Date(row.scheduled_at_utc).toLocaleString()}`} onDragStart={event=>event.dataTransfer.setData('target',String(row.id))} onKeyDown={async event=>{if(event.key!=='ArrowLeft'&&event.key!=='ArrowRight')return;event.preventDefault();const moved=new Date(row.scheduled_at_utc);moved.setDate(moved.getDate()+(event.key==='ArrowRight'?1:-1));await handpostApi.reschedule({targetId:row.id,scheduledAt:moved.toISOString()});onChanged();}} className={`calendar-chip ${row.platform}`} key={row.id}>{row.platform} · {new Date(row.scheduled_at_utc).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</button>)}</div>})}</div></section></main>}
+interface CalendarProps {
+  targets: any[];
+  onChanged: () => void;
+}
+export function Calendar({ targets, onChanged }: CalendarProps) {
+  const [cursor, setCursor] = useState(() => new Date());
+  const [view, setView] = useState<'month' | 'week'>('month');
+  const year = cursor.getFullYear(),
+    month = cursor.getMonth();
+  const first =
+    view === 'month' ? new Date(year, month, 1) : new Date(year, month, cursor.getDate() - cursor.getDay());
+  const count = view === 'month' ? 42 : 7;
+  const cells = Array.from(
+    { length: count },
+    (_, index) =>
+      new Date(
+        first.getFullYear(),
+        first.getMonth(),
+        first.getDate() + index - (view === 'month' ? first.getDay() : 0),
+      ),
+  );
+  const shift = (delta: number) =>
+    setCursor(
+      view === 'month'
+        ? new Date(year, month + delta, 1)
+        : new Date(year, month, cursor.getDate() + delta * 7),
+    );
+  return (
+    <main className="screen">
+      <header className="screen-header">
+        <div>
+          <p className="eyebrow">CALENDAR</p>
+          <h1>
+            {view === 'month'
+              ? cursor.toLocaleString(undefined, { month: 'long', year: 'numeric' })
+              : `Week of ${cells[0]!.toLocaleDateString()}`}
+          </h1>
+          <p>Drag a post to reschedule it in local time. Keyboard: focus a post and use Left/Right Arrow.</p>
+        </div>
+        <div className="calendar-controls">
+          <button onClick={() => setView('month')} aria-pressed={view === 'month'}>
+            Month
+          </button>
+          <button onClick={() => setView('week')} aria-pressed={view === 'week'}>
+            Week
+          </button>
+          <button onClick={() => shift(-1)} aria-label={`Previous ${view}`}>
+            <ChevronLeft />
+          </button>
+          <button onClick={() => setCursor(new Date())}>Today</button>
+          <button onClick={() => shift(1)} aria-label={`Next ${view}`}>
+            <ChevronRight />
+          </button>
+        </div>
+      </header>
+      <section className={`calendar ${view}`}>
+        <div className="weekdays">
+          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+            <strong key={day}>{day}</strong>
+          ))}
+        </div>
+        <div className="calendar-grid">
+          {cells.map((date) => {
+            const dateKey = date.toDateString();
+            const rows = targets.filter(
+              (target) =>
+                target.scheduled_at_utc && new Date(target.scheduled_at_utc).toDateString() === dateKey,
+            );
+            return (
+              <div
+                key={date.toISOString()}
+                className={view === 'month' && date.getMonth() !== month ? 'day outside' : 'day'}
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={async (event) => {
+                  const id = Number(event.dataTransfer.getData('target'));
+                  const original = targets.find((target) => target.id === id);
+                  if (!original) return;
+                  const time = new Date(original.scheduled_at_utc);
+                  date.setHours(time.getHours(), time.getMinutes());
+                  await handpostApi.reschedule({ targetId: id, scheduledAt: date.toISOString() });
+                  onChanged();
+                }}
+              >
+                <span>{date.getDate()}</span>
+                {rows.map((row) => (
+                  <button
+                    draggable
+                    aria-label={`${row.platform} post at ${new Date(row.scheduled_at_utc).toLocaleString()}`}
+                    onDragStart={(event) => event.dataTransfer.setData('target', String(row.id))}
+                    onKeyDown={async (event) => {
+                      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+                      event.preventDefault();
+                      const moved = new Date(row.scheduled_at_utc);
+                      moved.setDate(moved.getDate() + (event.key === 'ArrowRight' ? 1 : -1));
+                      await handpostApi.reschedule({ targetId: row.id, scheduledAt: moved.toISOString() });
+                      onChanged();
+                    }}
+                    className={`calendar-chip ${row.platform}`}
+                    key={row.id}
+                  >
+                    {row.platform} ·{' '}
+                    {new Date(row.scheduled_at_utc).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </button>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      </section>
+    </main>
+  );
+}

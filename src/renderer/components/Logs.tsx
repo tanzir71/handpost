@@ -1,4 +1,68 @@
 import { useState } from 'react';
 import { AttemptEvidence } from './AttemptEvidence';
-interface LogsProps{attempts:any[];}
-export function Logs({attempts}:LogsProps){const [query,setQuery]=useState('');const [outcome,setOutcome]=useState('all');const rows=attempts.filter(row=>(outcome==='all'||row.outcome===outcome)&&`${row.platform} ${row.outcome} ${row.error_class??''}`.toLowerCase().includes(query.toLowerCase()));return <main className="screen"><header className="screen-header"><div><p className="eyebrow">EVIDENCE</p><h1>Publish history</h1><p>Step-level outcomes and proof for every attempt.</p></div><div className="log-filters"><input aria-label="Filter history" value={query} onChange={event=>setQuery(event.target.value)} placeholder="Filter history"/><select aria-label="Outcome" value={outcome} onChange={event=>setOutcome(event.target.value)}><option value="all">All outcomes</option><option value="published">Published</option><option value="failed">Failed</option><option value="unverified">Unverified</option></select></div></header><div className="panel table-wrap"><table><thead><tr><th>Started</th><th>Platform</th><th>Outcome</th><th>Error class</th><th>Proof and steps</th></tr></thead><tbody>{rows.map(row=><tr key={row.id}><td>{new Date(row.started_at).toLocaleString()}</td><td>{row.platform}</td><td><span className={`pill ${row.outcome}`}>{row.outcome}</span></td><td>{row.error_class??'—'}</td><td><AttemptEvidence attempt={row}/></td></tr>)}</tbody></table>{rows.length===0&&<div className="empty">No matching attempts.</div>}</div></main>}
+interface LogsProps {
+  attempts: any[];
+}
+export function Logs({ attempts }: LogsProps) {
+  const [query, setQuery] = useState('');
+  const [outcome, setOutcome] = useState('all');
+  const rows = attempts.filter(
+    (row) =>
+      (outcome === 'all' || row.outcome === outcome) &&
+      `${row.platform} ${row.outcome} ${row.error_class ?? ''}`.toLowerCase().includes(query.toLowerCase()),
+  );
+  return (
+    <main className="screen">
+      <header className="screen-header">
+        <div>
+          <p className="eyebrow">EVIDENCE</p>
+          <h1>Publish history</h1>
+          <p>Step-level outcomes and proof for every attempt.</p>
+        </div>
+        <div className="log-filters">
+          <input
+            aria-label="Filter history"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Filter history"
+          />
+          <select aria-label="Outcome" value={outcome} onChange={(event) => setOutcome(event.target.value)}>
+            <option value="all">All outcomes</option>
+            <option value="published">Published</option>
+            <option value="failed">Failed</option>
+            <option value="unverified">Unverified</option>
+          </select>
+        </div>
+      </header>
+      <div className="panel table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Started</th>
+              <th>Platform</th>
+              <th>Outcome</th>
+              <th>Error class</th>
+              <th>Proof and steps</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.id}>
+                <td>{new Date(row.started_at).toLocaleString()}</td>
+                <td>{row.platform}</td>
+                <td>
+                  <span className={`pill ${row.outcome}`}>{row.outcome}</span>
+                </td>
+                <td>{row.error_class ?? '—'}</td>
+                <td>
+                  <AttemptEvidence attempt={row} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {rows.length === 0 && <div className="empty">No matching attempts.</div>}
+      </div>
+    </main>
+  );
+}

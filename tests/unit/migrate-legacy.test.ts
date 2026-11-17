@@ -21,19 +21,26 @@ function legacyInstall() {
   writeFileSync(join(legacy, 'media', '1', 'a.png'), 'png');
   const db = openDatabase(join(legacy, 'relay.db'));
   const account = Number(
-    db.prepare("INSERT INTO accounts(platform,display_name,profile_dir,status) VALUES ('x','X',?,'ok')").run(join(legacy, 'profiles', 'x')).lastInsertRowid,
+    db
+      .prepare("INSERT INTO accounts(platform,display_name,profile_dir,status) VALUES ('x','X',?,'ok')")
+      .run(join(legacy, 'profiles', 'x')).lastInsertRowid,
   );
-  const post = Number(db.prepare("INSERT INTO posts(base_text,status) VALUES ('hello','published')").run().lastInsertRowid);
-  db.prepare("INSERT INTO media(post_id,path,kind) VALUES (?,?,'image')").run(post, join(legacy, 'media', '1', 'a.png'));
+  const post = Number(
+    db.prepare("INSERT INTO posts(base_text,status) VALUES ('hello','published')").run().lastInsertRowid,
+  );
+  db.prepare("INSERT INTO media(post_id,path,kind) VALUES (?,?,'image')").run(
+    post,
+    join(legacy, 'media', '1', 'a.png'),
+  );
   const target = Number(
-    db.prepare("INSERT INTO post_targets(post_id,account_id,status) VALUES (?,?,'published')").run(post, account).lastInsertRowid,
+    db
+      .prepare("INSERT INTO post_targets(post_id,account_id,status) VALUES (?,?,'published')")
+      .run(post, account).lastInsertRowid,
   );
   const proof = join(legacy, 'artifacts', 'proof.png');
-  db.prepare("INSERT INTO publish_attempts(target_id,started_at,outcome,step_log_json,screenshot_path) VALUES (?,datetime('now'),'published',?,?)").run(
-    target,
-    JSON.stringify([{ name: 'submit', screenshotPath: proof }]),
-    proof,
-  );
+  db.prepare(
+    "INSERT INTO publish_attempts(target_id,started_at,outcome,step_log_json,screenshot_path) VALUES (?,datetime('now'),'published',?,?)",
+  ).run(target, JSON.stringify([{ name: 'submit', screenshotPath: proof }]), proof);
   db.close();
   return { appData, legacy, newDir: join(appData, 'Handpost') };
 }
@@ -53,7 +60,9 @@ describe('Relay → Handpost data migration', () => {
     const db = new Database(join(newDir, 'handpost.db'), { readonly: true });
     expect(db.prepare('SELECT profile_dir FROM accounts').pluck().get()).toBe(join(newDir, 'profiles', 'x'));
     expect(db.prepare('SELECT path FROM media').pluck().get()).toBe(join(newDir, 'media', '1', 'a.png'));
-    expect(db.prepare('SELECT screenshot_path FROM publish_attempts').pluck().get()).toBe(join(newDir, 'artifacts', 'proof.png'));
+    expect(db.prepare('SELECT screenshot_path FROM publish_attempts').pluck().get()).toBe(
+      join(newDir, 'artifacts', 'proof.png'),
+    );
     const steps = JSON.parse(String(db.prepare('SELECT step_log_json FROM publish_attempts').pluck().get()));
     expect(steps[0].screenshotPath).toBe(join(newDir, 'artifacts', 'proof.png'));
     expect(db.prepare('SELECT base_text FROM posts').pluck().get()).toBe('hello');
@@ -79,18 +88,23 @@ describe('Relay → Handpost data migration', () => {
   it('does nothing on a fresh install', () => {
     const appData = mkdtempSync(join(tmpdir(), 'handpost-fresh-'));
     roots.push(appData);
-    expect(migrateLegacyData(appData, join(appData, 'Handpost'))).toMatchObject({ migrated: false, reason: 'nothing-to-migrate' });
+    expect(migrateLegacyData(appData, join(appData, 'Handpost'))).toMatchObject({
+      migrated: false,
+      reason: 'nothing-to-migrate',
+    });
     expect(existsSync(join(appData, 'Handpost'))).toBe(false);
   });
 
   it('only rewrites paths that start with the old folder', () => {
     const { appData, legacy, newDir } = legacyInstall();
     const db = new Database(join(legacy, 'relay.db'));
-    db.prepare("UPDATE media SET path = ?").run(`${sep}elsewhere${sep}relay-scheduler-backup${sep}a.png`);
+    db.prepare('UPDATE media SET path = ?').run(`${sep}elsewhere${sep}relay-scheduler-backup${sep}a.png`);
     db.close();
     migrateLegacyData(appData, newDir);
     const copy = new Database(join(newDir, 'handpost.db'), { readonly: true });
-    expect(copy.prepare('SELECT path FROM media').pluck().get()).toBe(`${sep}elsewhere${sep}relay-scheduler-backup${sep}a.png`);
+    expect(copy.prepare('SELECT path FROM media').pluck().get()).toBe(
+      `${sep}elsewhere${sep}relay-scheduler-backup${sep}a.png`,
+    );
     copy.close();
   });
 });

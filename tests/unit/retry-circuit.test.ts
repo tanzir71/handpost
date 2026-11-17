@@ -1,5 +1,32 @@
-import { describe,expect,it } from 'vitest';
-import { classifyError,retryDelay } from '../../src/main/scheduler/retry';
+import { describe, expect, it } from 'vitest';
+import { classifyError, retryDelay } from '../../src/main/scheduler/retry';
 import { CircuitBreaker } from '../../src/main/scheduler/circuit-breaker';
 import { openDatabase } from '../../src/main/db/database';
-describe('recovery policy',()=>{it('uses 1/5/15 minute transient backoff and one UI drift retry',()=>{expect([1,2,3,4].map(n=>retryDelay('transient',n))).toEqual([60_000,300_000,900_000,null]);expect([retryDelay('ui_drift',1),retryDelay('ui_drift',2)]).toEqual([60_000,null]);expect(retryDelay('session',1)).toBeNull();expect(classifyError(new Error('Upload processing Timeout 300000ms'))).toBe('transient');expect(classifyError(new Error('captcha unusual activity'))).toBe('suspected_detection');});it('freezes 24h, retains seven-day history, and requires manual enable after repeated detection',()=>{const db=openDatabase();db.prepare("INSERT INTO accounts(platform,display_name,profile_dir) VALUES ('x','X','x')").run();const breaker=new CircuitBreaker(db);const now=new Date('2026-01-01T00:00:00Z');breaker.trip('x',now);expect(breaker.isOpen('x',new Date('2026-01-01T12:00:00Z'))).toBe(true);expect(breaker.isOpen('x',new Date('2026-01-02T01:00:00Z'))).toBe(false);expect(db.prepare("SELECT status FROM accounts WHERE platform='x'").pluck().get()).toBe('unknown');breaker.trip('x',new Date('2026-01-03T00:00:00Z'));expect(db.prepare("SELECT value FROM settings WHERE key='breaker:x:until'").pluck().get()).toBe('manual');breaker.reenable('x');expect(db.prepare("SELECT value FROM settings WHERE key='breaker:x'").pluck().get()).toContain('2026-01-03');breaker.trip('x',new Date('2026-01-04T00:00:00Z'));expect(db.prepare("SELECT value FROM settings WHERE key='breaker:x:until'").pluck().get()).toBe('manual');db.close();});});
+describe('recovery policy', () => {
+  it('uses 1/5/15 minute transient backoff and one UI drift retry', () => {
+    expect([1, 2, 3, 4].map((n) => retryDelay('transient', n))).toEqual([60_000, 300_000, 900_000, null]);
+    expect([retryDelay('ui_drift', 1), retryDelay('ui_drift', 2)]).toEqual([60_000, null]);
+    expect(retryDelay('session', 1)).toBeNull();
+    expect(classifyError(new Error('Upload processing Timeout 300000ms'))).toBe('transient');
+    expect(classifyError(new Error('captcha unusual activity'))).toBe('suspected_detection');
+  });
+  it('freezes 24h, retains seven-day history, and requires manual enable after repeated detection', () => {
+    const db = openDatabase();
+    db.prepare("INSERT INTO accounts(platform,display_name,profile_dir) VALUES ('x','X','x')").run();
+    const breaker = new CircuitBreaker(db);
+    const now = new Date('2026-01-01T00:00:00Z');
+    breaker.trip('x', now);
+    expect(breaker.isOpen('x', new Date('2026-01-01T12:00:00Z'))).toBe(true);
+    expect(breaker.isOpen('x', new Date('2026-01-02T01:00:00Z'))).toBe(false);
+    expect(db.prepare("SELECT status FROM accounts WHERE platform='x'").pluck().get()).toBe('unknown');
+    breaker.trip('x', new Date('2026-01-03T00:00:00Z'));
+    expect(db.prepare("SELECT value FROM settings WHERE key='breaker:x:until'").pluck().get()).toBe('manual');
+    breaker.reenable('x');
+    expect(db.prepare("SELECT value FROM settings WHERE key='breaker:x'").pluck().get()).toContain(
+      '2026-01-03',
+    );
+    breaker.trip('x', new Date('2026-01-04T00:00:00Z'));
+    expect(db.prepare("SELECT value FROM settings WHERE key='breaker:x:until'").pluck().get()).toBe('manual');
+    db.close();
+  });
+});

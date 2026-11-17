@@ -1,2 +1,2 @@
 import { capabilities } from '../../../shared/capabilities';
-export const pinterestCapabilities=capabilities.pinterest;
+export const pinterestCapabilities = capabilities.pinterest;

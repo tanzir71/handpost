@@ -32,9 +32,12 @@ export function migrateLegacyData(
 ): LegacyMigrationResult {
   const copied: string[] = [];
   const failed: LegacyMigrationResult['failed'] = [];
-  if (existsSync(join(dataDir, MIGRATION_MARKER))) return { migrated: false, reason: 'already-migrated', copied, failed };
+  if (existsSync(join(dataDir, MIGRATION_MARKER)))
+    return { migrated: false, reason: 'already-migrated', copied, failed };
   if (existsSync(join(dataDir, NEW_DB))) return { migrated: false, reason: 'has-data', copied, failed };
-  const from = legacyNames.map(name => join(appDataDir, name)).find(dir => existsSync(join(dir, LEGACY_DB)));
+  const from = legacyNames
+    .map((name) => join(appDataDir, name))
+    .find((dir) => existsSync(join(dir, LEGACY_DB)));
   if (!from) return { migrated: false, reason: 'nothing-to-migrate', copied, failed };
 
   mkdirSync(dataDir, { recursive: true });
@@ -44,7 +47,8 @@ export function migrateLegacyData(
   const staging = join(dataDir, `${NEW_DB}.migrating`);
   for (const suffix of ['-wal', '-shm', '']) rmSync(`${staging}${suffix}`, { force: true });
   copyFileSync(join(from, LEGACY_DB), staging);
-  if (existsSync(join(from, `${LEGACY_DB}-wal`))) copyFileSync(join(from, `${LEGACY_DB}-wal`), `${staging}-wal`);
+  if (existsSync(join(from, `${LEGACY_DB}-wal`)))
+    copyFileSync(join(from, `${LEGACY_DB}-wal`), `${staging}-wal`);
   rewriteStoredPaths(staging, from, dataDir);
   for (const suffix of ['-wal', '-shm']) rmSync(`${staging}${suffix}`, { force: true });
   renameSync(staging, join(dataDir, NEW_DB));
@@ -87,11 +91,9 @@ export function rewriteStoredPaths(dbPath: string, from: string, to: string): vo
           `UPDATE ${table} SET ${column} = ? || substr(${column}, length(?) + 1) WHERE substr(${column}, 1, length(?)) = ?`,
         ).run(newPrefix, oldPrefix, oldPrefix, oldPrefix);
       }
-      db.prepare('UPDATE publish_attempts SET step_log_json = replace(step_log_json, ?, ?) WHERE instr(step_log_json, ?) > 0').run(
-        jsonOld,
-        jsonNew,
-        jsonOld,
-      );
+      db.prepare(
+        'UPDATE publish_attempts SET step_log_json = replace(step_log_json, ?, ?) WHERE instr(step_log_json, ?) > 0',
+      ).run(jsonOld, jsonNew, jsonOld);
     })();
   } finally {
     db.close();

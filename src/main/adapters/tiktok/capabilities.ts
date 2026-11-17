@@ -1,2 +1,2 @@
 import { capabilities } from '../../../shared/capabilities';
-export const tiktokCapabilities=capabilities.tiktok;
+export const tiktokCapabilities = capabilities.tiktok;

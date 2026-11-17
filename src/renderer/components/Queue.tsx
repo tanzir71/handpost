@@ -1,5 +1,88 @@
 import { AlertTriangle, CheckCircle2, Clock3, ExternalLink, RotateCcw } from 'lucide-react';
 import { handpostApi } from '../lib/api';
 import { AttemptEvidence } from './AttemptEvidence';
-interface QueueProps{targets:any[];attempts:any[];onChanged:()=>void;}
-export function Queue({targets,attempts,onChanged}:QueueProps){const groups=[['Upcoming',targets.filter(target=>['scheduled','publishing'].includes(target.status)),Clock3],['Needs attention',targets.filter(target=>['needs_login','needs_attention','unverified','manual'].includes(target.status)),AlertTriangle],['Published',targets.filter(target=>target.status==='published'),CheckCircle2],['Failed',targets.filter(target=>target.status==='failed'),AlertTriangle]] as const;return <main className="screen"><header className="screen-header"><div><p className="eyebrow">PIPELINE</p><h1>Publishing queue</h1><p>Every result is verified and backed by an attempt log.</p></div></header>{groups.map(([title,rows,Icon])=><section className="queue-section" key={title}><h2><Icon size={18}/>{title}<span>{rows.length}</span></h2>{rows.length===0?<div className="empty panel">Nothing here right now.</div>:rows.map(row=>{const rowAttempts=attempts.filter(attempt=>attempt.target_id===row.id);return <article className="queue-row" key={row.id}><span className={`platform-icon ${row.platform}`}>{row.platform.slice(0,2)}</span><div className="queue-content"><strong>{row.base_text||'Media post'}</strong><small>{row.platform} · {row.scheduled_at_utc?new Date(row.scheduled_at_utc).toLocaleString():'No time'} · {row.status}</small>{row.error_detail&&<p className="validation">{row.error_code}: {row.error_detail}</p>}{rowAttempts.map(attempt=><AttemptEvidence key={attempt.id} attempt={attempt}/>)}</div><div className="row-actions">{['failed','unverified','needs_attention'].includes(row.status)&&<button title="Retry" onClick={async()=>{await handpostApi.retry({targetId:row.id});onChanged();}}><RotateCcw size={16}/></button>}{row.status!=='published'&&<button title="Open manually" onClick={()=>void handpostApi.openManual(row.id)}><ExternalLink size={16}/></button>}</div></article>})}</section>)}</main>}
+interface QueueProps {
+  targets: any[];
+  attempts: any[];
+  onChanged: () => void;
+}
+export function Queue({ targets, attempts, onChanged }: QueueProps) {
+  const groups = [
+    ['Upcoming', targets.filter((target) => ['scheduled', 'publishing'].includes(target.status)), Clock3],
+    [
+      'Needs attention',
+      targets.filter((target) =>
+        ['needs_login', 'needs_attention', 'unverified', 'manual'].includes(target.status),
+      ),
+      AlertTriangle,
+    ],
+    ['Published', targets.filter((target) => target.status === 'published'), CheckCircle2],
+    ['Failed', targets.filter((target) => target.status === 'failed'), AlertTriangle],
+  ] as const;
+  return (
+    <main className="screen">
+      <header className="screen-header">
+        <div>
+          <p className="eyebrow">PIPELINE</p>
+          <h1>Publishing queue</h1>
+          <p>Every result is verified and backed by an attempt log.</p>
+        </div>
+      </header>
+      {groups.map(([title, rows, Icon]) => (
+        <section className="queue-section" key={title}>
+          <h2>
+            <Icon size={18} />
+            {title}
+            <span>{rows.length}</span>
+          </h2>
+          {rows.length === 0 ? (
+            <div className="empty panel">Nothing here right now.</div>
+          ) : (
+            rows.map((row) => {
+              const rowAttempts = attempts.filter((attempt) => attempt.target_id === row.id);
+              return (
+                <article className="queue-row" key={row.id}>
+                  <span className={`platform-icon ${row.platform}`}>{row.platform.slice(0, 2)}</span>
+                  <div className="queue-content">
+                    <strong>{row.base_text || 'Media post'}</strong>
+                    <small>
+                      {row.platform} ·{' '}
+                      {row.scheduled_at_utc ? new Date(row.scheduled_at_utc).toLocaleString() : 'No time'} ·{' '}
+                      {row.status}
+                    </small>
+                    {row.error_detail && (
+                      <p className="validation">
+                        {row.error_code}: {row.error_detail}
+                      </p>
+                    )}
+                    {rowAttempts.map((attempt) => (
+                      <AttemptEvidence key={attempt.id} attempt={attempt} />
+                    ))}
+                  </div>
+                  <div className="row-actions">
+                    {['failed', 'unverified', 'needs_attention'].includes(row.status) && (
+                      <button
+                        title="Retry"
+                        onClick={async () => {
+                          await handpostApi.retry({ targetId: row.id });
+                          onChanged();
+                        }}
+                      >
+                        <RotateCcw size={16} />
+                      </button>
+                    )}
+                    {row.status !== 'published' && (
+                      <button title="Open manually" onClick={() => void handpostApi.openManual(row.id)}>
+                        <ExternalLink size={16} />
+                      </button>
+                    )}
+                  </div>
+                </article>
+              );
+            })
+          )}
+        </section>
+      ))}
+    </main>
+  );
+}

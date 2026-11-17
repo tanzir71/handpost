@@ -1,2 +1,2 @@
 import { capabilities } from '../../../shared/capabilities';
-export const youtubeCapabilities=capabilities.youtube;
+export const youtubeCapabilities = capabilities.youtube;
