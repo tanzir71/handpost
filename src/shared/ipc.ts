@@ -61,10 +61,22 @@ export const templateSchema = z.object({
   body: text,
   variables: z.array(z.string().max(100)).max(100),
 });
-export const settingSchema = z.object({
-  key: z.enum(['launchAtLogin', 'notifications']),
-  value: z.enum(['true', 'false']),
-});
+export const BOOLEAN_SETTINGS = [
+  'launchAtLogin',
+  'notifications',
+  'inbox.autoSchedule',
+  'inbox.writeStatus',
+  'inbox.statusPreviews',
+  'inbox.allowOutsideMedia',
+  'git.enabled',
+  'git.pushReceipts',
+  'inbox.trustConfirmed',
+] as const;
+export const settingSchema = z.union([
+  z.object({ key: z.enum(BOOLEAN_SETTINGS), value: z.enum(['true', 'false']) }),
+  z.object({ key: z.literal('theme'), value: z.enum(['system', 'light', 'dark']) }),
+  z.object({ key: z.literal('git.url'), value: z.string().max(2000) }),
+]);
 export const accountSettingsSchema = z.object({
   accountId: z.number().int().positive(),
   platform: z.enum(PLATFORM_IDS),
@@ -84,3 +96,8 @@ export const csvImportSchema = z.object({
   dryRun: z.boolean().default(true),
 });
 export const inboxIdSchema = z.string().regex(/^(file-[0-9a-f]{12}|[a-z0-9][a-z0-9._-]{0,79})$/);
+export const targetIdSchema = z.object({ targetId: z.number().int().positive() });
+export const inboxOpenSchema = z.union([
+  z.object({ target: z.enum(['folder', 'inbox', 'rejected', 'receipts']) }),
+  z.object({ target: z.literal('receipt'), id: inboxIdSchema }),
+]);

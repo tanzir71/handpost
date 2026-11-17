@@ -1,9 +1,13 @@
-import { useMemo, useState, type ClipboardEvent, type DragEvent } from 'react';
-import { ImagePlus, Save, Send, Timer } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEvent } from 'react';
+import { CalendarCheck, ImagePlus, Save, Send, Timer } from 'lucide-react';
 import { capabilities, countText, postWarnings, validatePost } from '../../shared/capabilities';
 import { renderTemplate, templateVariables } from '../../shared/templates';
 import type { MediaInput, PlatformId } from '../../shared/types';
 import { handpostApi } from '../lib/api';
+import { JITTER_NOTE, timeZone, toLocalInput } from '../lib/format';
+import { Button, EmptyState, PlatformBadge, Segmented, Tabs } from '../ui';
+
+type ScheduleMode = 'slot' | 'exact' | 'now';
 import type {
   AccountRow,
   Fields,
@@ -32,6 +36,8 @@ export interface ComposerProps {
     >
   >;
   onSaved: () => void;
+  /** Open this draft post right away (Inbox → Edit, Queue → Edit). */
+  initialPostId?: number | null;
 }
 interface MediaRow {
   id: number;
@@ -60,14 +66,14 @@ export function Composer({
   targets = [],
   storedMedia = [],
   onSaved,
+  initialPostId = null,
 }: ComposerProps) {
   const [postId, setPostId] = useState<number>();
   const [text, setText] = useState('');
   const [selected, setSelected] = useState<PlatformId[]>(['x']);
-  const [scheduledAt, setScheduledAt] = useState(() =>
-    new Date(Date.now() + 3_600_000).toISOString().slice(0, 16),
-  );
+  const [scheduledAt, setScheduledAt] = useState(() => toLocalInput(new Date(Date.now() + 3_600_000)));
   const [message, setMessage] = useState('');
+  const [scheduleMode, setScheduleMode] = useState<ScheduleMode>('exact');
   const [busy, setBusy] = useState(false);
   const [overrides, setOverrides] = useState<Record<string, string>>({});
   const [comments, setComments] = useState<Record<string, string>>({});
@@ -282,13 +288,16 @@ export function Composer({
     setTemplateValues({});
     setText(renderTemplate(body, {}));
   };
-  const chooseDraft = (id: string) => {
-    const draft = posts.find((item) => String(item.id) === id && item.status === 'draft');
+  const chooseDraft = (id: string, editAny = false) => {
+    const draft = posts.find((item) => String(item.id) === id && (editAny || item.status === 'draft'));
     if (!draft) {
       setPostId(undefined);
       return;
     }
-    const draftTargets = targets.filter((item) => item.post_id === draft.id && item.status === 'draft');
+    const draftTargets = targets.filter(
+      (item) =>
+        item.post_id === draft.id && (item.status === 'draft' || (editAny && item.status === 'scheduled')),
+    );
     setPostId(Number(draft.id));
     setText(String(draft.base_text));
     setMedia(storedMedia.filter((item) => item.post_id === draft.id));
@@ -318,8 +327,21 @@ export function Composer({
         }),
       ),
     );
-    setMessage('Draft loaded');
+    setMessage(
+      draft.status === 'draft'
+        ? 'Draft loaded'
+        : 'Post loaded for editing (saving replaces its unsent platforms)',
+    );
   };
+  const loadedInitial = useRef<number | null>(null);
+  useEffect(() => {
+    if (!initialPostId || loadedInitial.current === initialPostId) return;
+    if (!posts.some((post) => post.id === initialPostId)) return;
+    loadedInitial.current = initialPostId;
+    chooseDraft(String(initialPostId), true);
+    // chooseDraft reads the latest props; re-running only when the requested post or data changes is intended.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialPostId, posts, targets]);
   const setTemplateValue = (key: string, value: string) => {
     const values = { ...templateValues, [key]: value };
     setTemplateValues(values);
@@ -443,92 +465,160 @@ export function Composer({
         </label>
       </fieldset>
     ) : null;
+  const scheduleLabel =
+    scheduleMode === 'now' ? 'Post now' : scheduleMode === 'slot' ? 'Add to queue' : 'Schedule';
+  const runSchedule = () =>
+    perform(() =>
+      scheduleMode === 'slot'
+        ? addToQueue()
+        : scheduleMode === 'now'
+          ? save('scheduled', new Date().toISOString())
+          : save('scheduled'),
+    );
+  const isSuccess = (value: string) =>
+    ['saved', 'scheduled', 'attached', 'Added', 'loaded'].some((word) => value.includes(word));
+  const fileName = (path: string) => path.split(/[\\/]/).pop() ?? path;
   return (
     <main className="screen" onDrop={drop} onDragOver={(event) => event.preventDefault()} onPaste={paste}>
       <header className="screen-header">
         <div>
-          <p className="eyebrow">CREATE</p>
-          <h1>Compose once. Publish everywhere.</h1>
-          <p>Drop or paste media anywhere. Content stays on this device.</p>
+          <p className="eyebrow">Create</p>
+          <h1 className="t-display-m">Compose</h1>
+          <p className="secondary-text">Write once, adjust per platform. Drop or paste media anywhere.</p>
         </div>
-        <div className="header-badge">
-          <span className="status-dot ok" />
-          Scheduler active
+        <div className="screen-header__actions compose-start">
+          <label className="hp-field">
+            <span>Draft</span>
+            <select
+              value={postId && posts.some((post) => post.id === postId) ? String(postId) : ''}
+              onChange={(event) => chooseDraft(event.target.value)}
+            >
+              <option value="">Choose…</option>
+              {posts
+                .filter((post) => post.status === 'draft')
+                .map((post) => (
+                  <option key={post.id} value={post.id}>
+                    {post.base_text.slice(0, 40) || `Draft ${post.id}`}
+                  </option>
+                ))}
+            </select>
+          </label>
+          <label className="hp-field">
+            <span>Template</span>
+            <select defaultValue="" onChange={(event) => chooseTemplate(event.target.value)}>
+              <option value="">Choose…</option>
+              {templates.map((template) => (
+                <option key={template.id} value={template.id}>
+                  {template.name}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
       </header>
-      <div className="composer-grid">
-        <section className="panel editor" aria-busy={busy}>
-          <div className="platform-row" aria-label="Target platforms">
-            {accounts
-              .filter((account) => account.platform !== 'mock')
-              .map((account) => (
-                <button
-                  key={account.platform}
-                  className={selected.includes(account.platform) ? 'platform selected' : 'platform'}
-                  onClick={() => toggle(account.platform)}
-                  aria-pressed={selected.includes(account.platform)}
-                >
-                  {capabilities[account.platform as PlatformId]!.label.slice(0, 2)}
-                </button>
-              ))}
-          </div>
-          <div className="tabs">
-            <button className={activeTab === 'base' ? 'active' : ''} onClick={() => setActiveTab('base')}>
-              Base content
-            </button>
-            {selected.map((platform) => (
-              <button
-                key={platform}
-                className={activeTab === platform ? 'active' : ''}
-                onClick={() => setActiveTab(platform)}
-              >
-                {capabilities[platform].label}
-              </button>
-            ))}
-          </div>
-          <label className="sr-only" htmlFor="post-text">
-            Post text
-          </label>
-          <textarea
-            id="post-text"
-            value={activeText}
-            onChange={(event) =>
-              activeTab === 'base'
-                ? setText(event.target.value)
-                : setOverrides((value) => ({ ...value, [activeTab]: event.target.value }))
-            }
-            placeholder="What do you want to share?"
-          />
-          <div className="editor-meta">
-            <span>
-              {activeTab === 'base'
-                ? 'Used unless overridden'
-                : `${countText(activeTab, activeText)} / ${capabilities[activeTab].maxChars}`}
-            </span>
-            <button className="subtle" disabled={busy} onClick={() => void perform(attach)}>
-              <ImagePlus size={16} />
-              Attach media
-            </button>
-          </div>
-          {activeTab !== 'base' && (
-            <label className="first-comment">
-              First comment
-              <input
-                value={comments[activeTab] ?? ''}
-                onChange={(event) => setComments((value) => ({ ...value, [activeTab]: event.target.value }))}
-                placeholder="Optional first comment"
-              />
+      <div className="split split--compose">
+        <section className="hp-card split__main compose" aria-busy={busy} aria-label="Editor">
+          <div className="hp-card__body">
+            <div className="platform-chips" role="group" aria-label="Target platforms">
+              {accounts
+                .filter((account) => account.platform !== 'mock')
+                .map((account) => {
+                  const platform = account.platform as PlatformId;
+                  const on = selected.includes(platform);
+                  const cap = capabilities[platform]!;
+                  const used = countText(platform, overrides[platform] ?? text);
+                  return (
+                    <button
+                      key={platform}
+                      type="button"
+                      className="platform-chip"
+                      aria-pressed={on}
+                      aria-label={cap.label}
+                      onClick={() => toggle(platform)}
+                    >
+                      <PlatformBadge platform={platform} />
+                      <span aria-hidden="true">{cap.label}</span>
+                      {on && (
+                        <code aria-hidden="true" className={used > cap.maxChars ? 'over' : undefined}>
+                          {used}/{cap.maxChars}
+                        </code>
+                      )}
+                    </button>
+                  );
+                })}
+            </div>
+            <Tabs<PlatformId | 'base'>
+              label="Text per platform"
+              active={activeTab}
+              onChange={setActiveTab}
+              tabs={[
+                { id: 'base', label: 'Base text' },
+                ...selected.map((platform) => ({ id: platform, label: capabilities[platform].label })),
+              ]}
+            />
+            <label className="sr-only" htmlFor="post-text">
+              Post text
             </label>
-          )}
-          {platformOptionEditor}
-          {media.length > 0 && (
-            <div className="media-strip">
+            <textarea
+              id="post-text"
+              className="compose__text t-body-l"
+              value={activeText}
+              onChange={(event) =>
+                activeTab === 'base'
+                  ? setText(event.target.value)
+                  : setOverrides((value) => ({ ...value, [activeTab]: event.target.value }))
+              }
+              placeholder={
+                activeTab === 'base'
+                  ? 'What do you want to share?'
+                  : `Text just for ${capabilities[activeTab].label}`
+              }
+            />
+            <div className="compose__meta t-body-s secondary-text">
+              <span>
+                {activeTab === 'base'
+                  ? 'Used for every platform without its own text'
+                  : `${countText(activeTab, activeText)} / ${capabilities[activeTab].maxChars} characters`}
+              </span>
+            </div>
+            <div className="validation-pills" aria-live="polite">
+              {selected.flatMap((platform) =>
+                (errors[platform] ?? []).map((error) => (
+                  <span className="hp-pill hp-pill--danger" key={`${platform}-${error}`}>
+                    {capabilities[platform].label}: {error}
+                  </span>
+                )),
+              )}
+              {optionErrors.map((error) => (
+                <span className="hp-pill hp-pill--danger" key={error}>
+                  {error}
+                </span>
+              ))}
+              {selected.flatMap((platform) =>
+                (warnings[platform] ?? []).map((warning) => (
+                  <span className="hp-pill hp-pill--warn" key={`${platform}-${warning}`}>
+                    {capabilities[platform].label}: {warning}
+                  </span>
+                )),
+              )}
+              {selected.length === 0 && (
+                <span className="hp-pill hp-pill--danger">Select at least one platform.</span>
+              )}
+              {missingAccounts.length > 0 && (
+                <span className="hp-pill hp-pill--danger">
+                  No account slot for {missingAccounts.join(', ')}
+                </span>
+              )}
+            </div>
+            <div className="media-strip" aria-label="Media">
               {media.map((row) => (
-                <label key={row.id}>
-                  <strong>
-                    {row.kind} · {row.path.split(/[\\/]/).pop()}
-                  </strong>
+                <div className="media-tile" key={row.id}>
+                  <span className="media-tile__kind t-mono-s">
+                    {row.kind} · {fileName(row.path)}
+                  </span>
                   <input
+                    className="hp-input"
+                    aria-label={`Alt text for ${fileName(row.path)}`}
                     value={
                       activeTab === 'base'
                         ? (row.alt_text ?? '')
@@ -547,155 +637,148 @@ export function Composer({
                       } else setOption(activeTab, `alt:${row.id}`, altText);
                     }}
                   />
-                </label>
+                </div>
               ))}
+              <button
+                type="button"
+                className="media-add"
+                disabled={busy}
+                onClick={() => void perform(attach)}
+              >
+                <ImagePlus size={18} aria-hidden="true" />
+                <span>Add media</span>
+              </button>
             </div>
-          )}
-          {selected.flatMap((platform) =>
-            (errors[platform] ?? []).map((error) => (
-              <p className="validation" key={`${platform}-${error}`}>
-                {capabilities[platform].label}: {error}
-              </p>
-            )),
-          )}
-          {selected.flatMap((platform) =>
-            (warnings[platform] ?? []).map((warning) => (
-              <p className="warning-chip" key={`${platform}-${warning}`}>
-                {capabilities[platform].label}: {warning}
-              </p>
-            )),
-          )}
-          {optionErrors.map((error) => (
-            <p className="validation" key={error}>
-              {error}
-            </p>
-          ))}
-          {selected.length === 0 && <p className="validation">Select at least one platform.</p>}
-          <div className="template-row">
-            <label>
-              Draft
-              <select defaultValue="" onChange={(event) => chooseDraft(event.target.value)}>
-                <option value="">Choose…</option>
-                {posts
-                  .filter((post) => post.status === 'draft')
-                  .map((post) => (
-                    <option key={post.id} value={post.id}>
-                      {post.base_text.slice(0, 40) || `Draft ${post.id}`}
-                    </option>
-                  ))}
-              </select>
-            </label>
-            <label>
-              Template
-              <select defaultValue="" onChange={(event) => chooseTemplate(event.target.value)}>
-                <option value="">Choose…</option>
-                {templates.map((template) => (
-                  <option key={template.id} value={template.id}>
-                    {template.name}
-                  </option>
+            {activeTab !== 'base' && (
+              <label className="hp-field">
+                <span>First comment</span>
+                <input
+                  value={comments[activeTab] ?? ''}
+                  onChange={(event) =>
+                    setComments((value) => ({ ...value, [activeTab]: event.target.value }))
+                  }
+                  placeholder="Optional — posted as the first reply after the post is verified"
+                />
+              </label>
+            )}
+            {platformOptionEditor}
+            {templateKeys.length > 0 && (
+              <fieldset className="template-variables">
+                <legend>Template variables</legend>
+                {templateKeys.map((key) => (
+                  <label key={key} className="hp-field">
+                    <span>{key}</span>
+                    <input
+                      value={templateValues[key] ?? ''}
+                      onChange={(event) => setTemplateValue(key, event.target.value)}
+                    />
+                  </label>
                 ))}
-              </select>
-            </label>
-            <label>
-              Publish at
-              <input
-                type="datetime-local"
-                value={scheduledAt}
-                onChange={(event) => setScheduledAt(event.target.value)}
-              />
-            </label>
+              </fieldset>
+            )}
           </div>
-          {templateKeys.length > 0 && (
-            <fieldset className="template-variables">
-              <legend>Template variables</legend>
-              {templateKeys.map((key) => (
-                <label key={key}>
-                  {key}
-                  <input
-                    value={templateValues[key] ?? ''}
-                    onChange={(event) => setTemplateValue(key, event.target.value)}
-                  />
-                </label>
-              ))}
-            </fieldset>
-          )}
-          <footer className="composer-actions">
-            <button className="subtle" disabled={busy} onClick={() => void perform(() => save('draft'))}>
-              <Save size={16} />
+          <footer className="schedule-bar">
+            <Segmented<ScheduleMode>
+              label="When"
+              value={scheduleMode}
+              onChange={setScheduleMode}
+              options={[
+                { value: 'slot', label: 'Next free slot' },
+                { value: 'exact', label: 'Exact time' },
+                { value: 'now', label: 'Post now' },
+              ]}
+            />
+            {scheduleMode === 'exact' && (
+              <label className="hp-field schedule-bar__date">
+                <span className="sr-only">Publish at</span>
+                <input
+                  type="datetime-local"
+                  value={scheduledAt}
+                  onChange={(event) => setScheduledAt(event.target.value)}
+                />
+              </label>
+            )}
+            <code className="schedule-bar__zone">
+              {timeZone} · {JITTER_NOTE}
+            </code>
+            <span className="schedule-bar__spacer" />
+            <Button
+              kind="ghost"
+              icon={Save}
+              disabled={busy}
+              onClick={() => void perform(() => save('draft'))}
+            >
               Save draft
-            </button>
-            <button
-              className="secondary"
+            </Button>
+            {scheduleMode !== 'slot' && (
+              <Button icon={Timer} disabled={busy || hasErrors} onClick={() => void perform(addToQueue)}>
+                Add to queue
+              </Button>
+            )}
+            <Button
+              kind="primary"
+              icon={scheduleMode === 'now' ? Send : CalendarCheck}
               disabled={busy || hasErrors}
-              onClick={() => void perform(addToQueue)}
+              onClick={() => void runSchedule()}
             >
-              <Timer size={16} />
-              Add to queue
-            </button>
-            <button
-              className="secondary"
-              disabled={busy || hasErrors}
-              onClick={() => void perform(() => save('scheduled'))}
-            >
-              Schedule
-            </button>
-            <button
-              className="primary"
-              disabled={busy || hasErrors}
-              onClick={() => void perform(() => save('scheduled', new Date().toISOString()))}
-            >
-              <Send size={16} />
-              Post now
-            </button>
+              {scheduleLabel}
+            </Button>
           </footer>
           {message && (
             <p
               role="status"
-              className={
-                message.includes('saved') ||
-                message.includes('scheduled') ||
-                message.includes('attached') ||
-                message.includes('Added') ||
-                message.includes('loaded')
-                  ? 'success-message'
-                  : 'validation'
-              }
+              className={`hp-callout ${isSuccess(message) ? 'hp-callout--ink' : 'hp-callout--danger'} compose__message`}
             >
               {message}
             </p>
           )}
         </section>
-        <aside className="preview-stack">
-          <div className="preview-heading">
-            <span>Live previews</span>
-            <small>{selected.length} channels</small>
-          </div>
+        <aside className="split__side previews" aria-label="Live previews">
+          <p className="hp-section-label">Live previews · {selected.length}</p>
           {selected.length === 0 ? (
-            <div className="empty panel">Select a platform to preview.</div>
+            <div className="hp-card">
+              <EmptyState>Select a platform to preview the post.</EmptyState>
+            </div>
           ) : (
-            selected.map((platform) => (
-              <article className="preview-card" key={platform}>
-                <header>
-                  <span className="avatar">Y</span>
-                  <div>
-                    <strong>Your account</strong>
-                    <small>@you · now</small>
-                  </div>
-                  <span className="platform-tag">{capabilities[platform].label}</span>
-                </header>
-                <p>
-                  {(overrides[platform] ?? text) || (
-                    <span className="muted">Your post preview appears here…</span>
+            selected.map((platform) => {
+              const body = overrides[platform] ?? text;
+              const fold = platform === 'linkedin' && body.length > 210;
+              return (
+                <article className="hp-card preview" key={platform}>
+                  <header className="preview__head">
+                    <PlatformBadge platform={platform} />
+                    <div>
+                      <strong>Your account</strong>
+                      <small className="muted">{capabilities[platform].label} · now</small>
+                    </div>
+                  </header>
+                  <p className="preview__text">
+                    {body ? (
+                      fold ? (
+                        <>
+                          {body.slice(0, 210)}
+                          <span className="preview__fold">…see more</span>
+                        </>
+                      ) : (
+                        body
+                      )
+                    ) : (
+                      <span className="muted">Your post preview appears here…</span>
+                    )}
+                  </p>
+                  {media.length > 0 && (
+                    <div className={`preview__media${platform === 'x' ? ' preview__media--x' : ''}`}>
+                      {media.length} {media.length === 1 ? 'attachment' : 'attachments'}
+                    </div>
                   )}
-                </p>
-                {media.length > 0 && (
-                  <div className="preview-media">
-                    {media.length} media attachment{media.length === 1 ? '' : 's'}
-                  </div>
-                )}
-                <footer>♡ &nbsp; ◯ &nbsp; ↗</footer>
-              </article>
-            ))
+                  {decodeThreadParts(platformOptions[platform]?.threadParts).map((part, index) => (
+                    <p className="preview__thread" key={`${index}-${part}`}>
+                      {index + 2}. {part}
+                    </p>
+                  ))}
+                </article>
+              );
+            })
           )}
         </aside>
       </div>

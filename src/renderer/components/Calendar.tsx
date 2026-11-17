@@ -1,6 +1,8 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import { handpostApi } from '../lib/api';
+import { Button, EmptyState, PlatformBadge, Segmented } from '../ui';
+import { JITTER_NOTE } from '../lib/format';
 import type { Fields, TargetListRow } from '../../shared/rows';
 type CalendarTarget = Fields<TargetListRow, 'id' | 'platform' | 'scheduled_at_utc'>;
 export interface CalendarProps {
@@ -34,31 +36,46 @@ export function Calendar({ targets, onChanged }: CalendarProps) {
     <main className="screen">
       <header className="screen-header">
         <div>
-          <p className="eyebrow">CALENDAR</p>
-          <h1>
+          <p className="eyebrow">Calendar</p>
+          <h1 className="t-display-m">
             {view === 'month'
               ? cursor.toLocaleString(undefined, { month: 'long', year: 'numeric' })
               : `Week of ${cells[0]!.toLocaleDateString()}`}
           </h1>
-          <p>Drag a post to reschedule it in local time. Keyboard: focus a post and use Left/Right Arrow.</p>
+          <p className="secondary-text">
+            Drag a post to another day to reschedule it (local time). Keyboard: focus a post, then Left/Right
+            Arrow.
+          </p>
         </div>
-        <div className="calendar-controls">
-          <button onClick={() => setView('month')} aria-pressed={view === 'month'}>
-            Month
-          </button>
-          <button onClick={() => setView('week')} aria-pressed={view === 'week'}>
-            Week
-          </button>
-          <button onClick={() => shift(-1)} aria-label={`Previous ${view}`}>
-            <ChevronLeft />
-          </button>
-          <button onClick={() => setCursor(new Date())}>Today</button>
-          <button onClick={() => shift(1)} aria-label={`Next ${view}`}>
-            <ChevronRight />
-          </button>
+        <div className="screen-header__actions">
+          <Segmented<'month' | 'week'>
+            label="Calendar view"
+            value={view}
+            onChange={setView}
+            options={[
+              { value: 'month', label: 'Month' },
+              { value: 'week', label: 'Week' },
+            ]}
+          />
+          <Button icon={ChevronLeft} label={`Previous ${view}`} onClick={() => shift(-1)} />
+          <Button onClick={() => setCursor(new Date())}>Today</Button>
+          <Button icon={ChevronRight} label={`Next ${view}`} onClick={() => shift(1)} />
         </div>
       </header>
-      <section className={`calendar ${view}`}>
+      {!targets.some((target) => target.scheduled_at_utc) && (
+        <div className="hp-card">
+          <EmptyState
+            action={
+              <a className="hp-button hp-button--secondary" href="#/compose">
+                Compose a post
+              </a>
+            }
+          >
+            Nothing is scheduled yet. Scheduled posts appear on their day; drag them to move them.
+          </EmptyState>
+        </div>
+      )}
+      <section className={`hp-card calendar calendar--${view}`} aria-label="Calendar">
         <div className="weekdays">
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
             <strong key={day}>{day}</strong>
@@ -87,11 +104,11 @@ export function Calendar({ targets, onChanged }: CalendarProps) {
                   onChanged();
                 }}
               >
-                <span>{date.getDate()}</span>
+                <span className="day__number">{date.getDate()}</span>
                 {rows.map((row) => (
                   <button
                     draggable
-                    aria-label={`${row.platform} post at ${new Date(row.scheduled_at_utc).toLocaleString()}`}
+                    aria-label={`${row.platform} post at ${new Date(row.scheduled_at_utc).toLocaleString()} ${JITTER_NOTE}`}
                     onDragStart={(event) => event.dataTransfer.setData('target', String(row.id))}
                     onKeyDown={async (event) => {
                       if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
@@ -101,14 +118,16 @@ export function Calendar({ targets, onChanged }: CalendarProps) {
                       await handpostApi.reschedule({ targetId: row.id, scheduledAt: moved.toISOString() });
                       onChanged();
                     }}
-                    className={`calendar-chip ${row.platform}`}
+                    className="calendar-chip"
                     key={row.id}
                   >
-                    {row.platform} ·{' '}
-                    {new Date(row.scheduled_at_utc).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
+                    <PlatformBadge platform={row.platform} />
+                    <span>
+                      {new Date(row.scheduled_at_utc).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </span>
                   </button>
                 ))}
               </div>

@@ -23,6 +23,7 @@ import {
   type InboxPost,
 } from '../../shared/inbox-schema';
 import type { HandpostDatabase } from '../db/database';
+import type { InboxHealth, InboxListItem, WriterRow } from '../../shared/inbox-types';
 import { jitterDate } from '../engine/humanizer';
 import { postEvents } from '../posts/events';
 import { savePost, type TargetInput } from '../posts/create';
@@ -87,19 +88,6 @@ export interface InboxServiceOptions {
   afterCommit?: (id: string) => void | Promise<void>;
   /** Test seam: observes processing start/end. */
   onProcess?: (event: 'start' | 'end', file: string) => void;
-}
-
-export interface InboxHealth {
-  folder: string;
-  exists: boolean;
-  watching: boolean;
-  lastScanAt: string | null;
-  lastError: string | null;
-  state: 'ok' | 'warn' | 'danger';
-  pendingFiles: number;
-  held: number;
-  waitingMedia: number;
-  rejectedToday: number;
 }
 
 interface FileContext {
@@ -1156,18 +1144,54 @@ export class InboxService extends EventEmitter {
     };
   }
 
-  /** Items with their current receipts, newest first (Inbox screen). */
-  items(): Array<InboxItemRow & { receipt: Receipt; text: string | null }> {
-    return this.store.list().map((item) => ({
-      ...item,
-      receipt: buildReceipt(this.options.db, item),
-      text: item.post_id
-        ? (this.options.db
-            .prepare('SELECT base_text FROM posts WHERE id=?')
-            .pluck()
-            .get(item.post_id) as string)
-        : null,
+  /** Items with their current receipts plus duplicate files, newest first (Inbox screen). */
+  list(): InboxListItem[] {
+    const db = this.options.db;
+    const text = db.prepare('SELECT base_text FROM posts WHERE id=?').pluck();
+    const items: InboxListItem[] = this.store.list().map((item) => ({
+      key: `item:${item.id}`,
+      id: item.id,
+      postId: item.post_id,
+      state: effectiveState(
+        item.state,
+        item.post_id ? targetsOf(db, item.post_id).map((target) => target.status) : [],
+      ),
+      source: item.source,
+      sourceKind: item.source_kind,
+      fileName: item.file_name,
+      storedPath: item.stored_path,
+      receivedAt: item.received_at,
+      text: item.post_id ? ((text.get(item.post_id) as string | undefined) ?? null) : null,
+      receipt: buildReceipt(db, item),
     }));
+    const byId = new Map(items.map((item) => [item.id, item]));
+    for (const file of this.store.files(500).filter((row) => row.outcome === 'duplicate')) {
+      const original = file.item_id ? byId.get(file.item_id) : undefined;
+      if (!original) continue;
+      items.push({
+        ...original,
+        key: `file:${file.id}`,
+        state: 'duplicate',
+        fileName: file.file_name,
+        storedPath: file.stored_path,
+        receivedAt: file.processed_at,
+        receipt: { ...original.receipt, state: 'duplicate', file: file.stored_path },
+      });
+    }
+    return items.sort((a, b) => b.receivedAt.localeCompare(a.receivedAt));
+  }
+
+  /** Sources that wrote files, for Settings → Automation → Writers seen. */
+  writers(): WriterRow[] {
+    return (
+      this.options.db
+        .prepare(
+          `SELECT COALESCE(f.source,i.source) AS source,count(*) AS files,max(f.processed_at) AS lastSeen
+           FROM inbox_files f LEFT JOIN inbox_items i ON i.id=f.item_id
+           WHERE COALESCE(f.source,i.source) IS NOT NULL GROUP BY COALESCE(f.source,i.source) ORDER BY lastSeen DESC`,
+        )
+        .all() as Array<{ source: string; files: number; lastSeen: string }>
+    ).map((row) => ({ ...row, sourceKind: sourceKindOf(row.source) }));
   }
 
   isTerminal(state: InboxItemState): boolean {

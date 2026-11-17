@@ -30,13 +30,17 @@ import { recalculatePostStatus } from '../scheduler/status';
 import { CircuitBreaker } from '../scheduler/circuit-breaker';
 import type { SettingRow, TargetListRow } from '../../shared/rows';
 import type { InboxService } from '../inbox/service';
-import { inboxIdSchema } from '../../shared/ipc';
+import { inboxIdSchema, inboxOpenSchema, targetIdSchema } from '../../shared/ipc';
+import { SETTING_KEYS } from '../inbox/service';
+import { breakerRows, pacingToday } from '../scheduler/pacing';
+import { automationInfo, readIntegration } from '../inbox/integrations';
 
 export function registerHandlers(
   db: HandpostDatabase,
   engine: BrowserEngine,
   dataDir: string,
   inbox?: InboxService,
+  onSettingChanged?: (key: string, value: string) => void,
 ): void {
   // Every payload is `unknown` until a zod schema parses it.
   const handle = (name: string, fn: (...args: unknown[]) => unknown) =>
@@ -166,6 +170,8 @@ export function registerHandlers(
       'INSERT INTO settings(key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',
     ).run(v.key, v.value);
     if (v.key === 'launchAtLogin') app.setLoginItemSettings({ openAtLogin: v.value === 'true' });
+    if (v.key.startsWith('inbox.')) void inbox?.writeStatusNow();
+    onSettingChanged?.(v.key, v.value);
   });
   handle('save-account-settings', (raw) => {
     const v = accountSettingsSchema.parse(raw);
@@ -228,16 +234,79 @@ export function registerHandlers(
     db.prepare("UPDATE post_targets SET status='manual' WHERE id=?").run(targetId);
     recalculatePostStatus(db, row.post_id);
   });
+  // ── Inbox & automation ──────────────────────────────────────────────────────────────────────────────
+  const needInbox = () => {
+    if (!inbox) throw new Error('The inbox is not running');
+    return inbox;
+  };
   handle('inbox-health', async () => (inbox ? await inbox.health() : null));
-  handle('inbox-list', () => inbox?.items() ?? []);
-  handle('inbox-approve', async (raw) => {
-    if (!inbox) throw new Error('The inbox is not running');
-    return inbox.approve(inboxIdSchema.parse(raw));
+  handle('inbox-list', () => inbox?.list() ?? []);
+  handle('inbox-approve', (raw) => needInbox().approve(inboxIdSchema.parse(raw)));
+  handle('inbox-reject', (raw) => needInbox().reject(inboxIdSchema.parse(raw)));
+  handle('inbox-writers', () => inbox?.writers() ?? []);
+  handle('inbox-open', async (raw) => {
+    const request = inboxOpenSchema.parse(raw);
+    const root = needInbox().folder;
+    const path =
+      request.target === 'receipt'
+        ? join(root, 'receipts', `${request.id}.json`)
+        : request.target === 'folder'
+          ? root
+          : join(root, request.target);
+    const error = await shell.openPath(path);
+    if (error) throw new Error(error);
   });
-  handle('inbox-reject', async (raw) => {
-    if (!inbox) throw new Error('The inbox is not running');
-    return inbox.reject(inboxIdSchema.parse(raw));
+  handle('inbox-choose-folder', async () => {
+    const service = needInbox();
+    const result = await dialog.showOpenDialog({
+      title: 'Choose the Handpost folder',
+      defaultPath: service.folder,
+      properties: ['openDirectory', 'createDirectory'],
+    });
+    if (result.canceled || !result.filePaths[0]) return service.folder;
+    const folder = result.filePaths[0];
+    db.prepare(
+      'INSERT INTO settings(key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',
+    ).run(SETTING_KEYS.path, folder);
+    await service.setFolder(folder);
+    return folder;
   });
+  handle('automation-info', () => automationInfo(needInbox().folder));
+  handle('copy-agents', async () => {
+    const target = join(needInbox().folder, 'AGENTS.md');
+    await writeFile(target, readIntegration('AGENTS.md'), 'utf8');
+    return target;
+  });
+  handle('pacing-today', () => pacingToday(db));
+  handle('breakers', () => breakerRows(db));
+  handle('cancel-target', (raw) => {
+    const { targetId } = targetIdSchema.parse(raw);
+    const postId = db.prepare('SELECT post_id FROM post_targets WHERE id=?').pluck().get(targetId);
+    const changed = db
+      .prepare(
+        "UPDATE post_targets SET status='cancelled' WHERE id=? AND status NOT IN ('publishing','published')",
+      )
+      .run(targetId).changes;
+    if (!changed) throw new Error('That post is already publishing or published');
+    if (typeof postId === 'number') recalculatePostStatus(db, postId);
+  });
+  handle('publish-now', (raw) => {
+    const { targetId } = targetIdSchema.parse(raw);
+    const postId = db.prepare('SELECT post_id FROM post_targets WHERE id=?').pluck().get(targetId);
+    // Due now: the next scheduler tick (≤ 30 s) picks it up, still subject to cooldowns and caps.
+    const now = new Date().toISOString();
+    db.prepare(
+      "UPDATE post_targets SET scheduled_at_utc=?,jittered_at_utc=?,status='scheduled' WHERE id=? AND status IN ('scheduled','needs_attention')",
+    ).run(now, now, targetId);
+    if (typeof postId === 'number') recalculatePostStatus(db, postId);
+  });
+  handle('app-info', () => ({
+    version: app.getVersion(),
+    dataDir,
+    electron: process.versions.electron ?? '',
+    chrome: process.versions.chrome ?? '',
+    platform: process.platform,
+  }));
   handle('open-external', async (rawUrl: unknown) => {
     await shell.openExternal(externalUrlSchema.parse(rawUrl));
   });

@@ -1,6 +1,11 @@
 import { useState, type SyntheticEvent } from 'react';
-import { handpostApi } from '../lib/api';
+import { ExternalLink } from 'lucide-react';
 import type { AttemptListRow, Fields } from '../../shared/rows';
+import { handpostApi } from '../lib/api';
+import { formatWhen } from '../lib/format';
+import { parseSteps } from '../lib/steps';
+import { Button, StatusPill, StepLog } from '../ui';
+
 export type EvidenceAttempt = Fields<
   AttemptListRow,
   'id' | 'started_at' | 'outcome' | 'step_log_json',
@@ -8,24 +13,14 @@ export type EvidenceAttempt = Fields<
 >;
 interface AttemptEvidenceProps {
   attempt: EvidenceAttempt;
+  open?: boolean;
 }
-interface Step {
-  name: string;
-  startedAt: string;
-  finishedAt: string;
-  outcome: string;
-  detail?: string;
-}
-export function AttemptEvidence({ attempt }: AttemptEvidenceProps) {
+
+/** One publish attempt: step log, permalink and proof screenshot (loaded on demand). Used by Queue and History. */
+export function AttemptEvidence({ attempt, open }: AttemptEvidenceProps) {
   const [image, setImage] = useState('');
   const [error, setError] = useState('');
-  let steps: Step[] = [];
-  try {
-    const value = JSON.parse(String(attempt.step_log_json ?? '[]'));
-    if (Array.isArray(value)) steps = value;
-  } catch {
-    steps = [];
-  }
+  const steps = parseSteps(attempt.step_log_json);
   const loadScreenshot = async (event: SyntheticEvent<HTMLDetailsElement>) => {
     if (!event.currentTarget.open || !attempt.screenshot_path || image) return;
     try {
@@ -35,34 +30,28 @@ export function AttemptEvidence({ attempt }: AttemptEvidenceProps) {
     }
   };
   return (
-    <details className="attempt-details" onToggle={(event) => void loadScreenshot(event)}>
+    <details className="attempt-details" open={open} onToggle={(event) => void loadScreenshot(event)}>
       <summary>
-        {new Date(attempt.started_at).toLocaleString()} · {attempt.outcome}
-        {attempt.error_class ? ` · ${attempt.error_class}` : ''}
+        <span>{formatWhen(attempt.started_at, { withDay: true })}</span>
+        <StatusPill status={attempt.outcome ?? 'unknown'} />
+        {attempt.error_class && <code>{attempt.error_class}</code>}
       </summary>
-      {steps.length > 0 ? (
-        <ol>
-          {steps.map((step) => (
-            <li key={`${step.startedAt}-${step.name}`}>
-              <strong>{step.name}</strong>
-              <span>
-                {step.outcome} ·{' '}
-                {Math.max(0, new Date(step.finishedAt).getTime() - new Date(step.startedAt).getTime())}ms
-              </span>
-              {step.detail && <small>{step.detail}</small>}
-            </li>
-          ))}
-        </ol>
-      ) : (
-        <p>No step log was recorded.</p>
-      )}
-      {attempt.published_url && (
-        <button className="subtle" onClick={() => void handpostApi.openExternal(attempt.published_url ?? '')}>
-          Open permalink
-        </button>
-      )}
-      {image && <img src={image} alt={`Publish attempt ${attempt.id} screenshot`} />}{' '}
-      {error && <p className="validation">{error}</p>}
+      <div className="attempt-details__body">
+        <StepLog steps={steps} />
+        <div className="attempt-details__proof">
+          {attempt.published_url && (
+            <Button
+              size="s"
+              icon={ExternalLink}
+              onClick={() => void handpostApi.openExternal(attempt.published_url ?? '')}
+            >
+              Open permalink
+            </Button>
+          )}
+          {image && <img src={image} alt={`Publish attempt ${attempt.id} screenshot`} />}
+          {error && <p className="hp-callout hp-callout--danger">{error}</p>}
+        </div>
+      </div>
     </details>
   );
 }

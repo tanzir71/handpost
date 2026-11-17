@@ -12,6 +12,10 @@ export interface AccountRow {
   status: AccountStatus;
   last_checked_at: string | null;
   created_at: string;
+  /** Captured after login (H6), e.g. `@tanzir`. */
+  handle: string | null;
+  /** The account's own profile page, used for verification. */
+  profile_url: string | null;
 }
 
 export interface PostRow {
@@ -19,7 +23,8 @@ export interface PostRow {
   base_text: string;
   created_at: string;
   updated_at: string;
-  status: PostStatus | 'draft';
+  status: PostStatus;
+  labels_json: string;
 }
 
 export interface TargetRow {

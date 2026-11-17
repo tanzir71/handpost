@@ -1,0 +1,133 @@
+/*
+ * Handpost design tokens — docs/DESIGN.md §2 (Figma collection "Handpost / Color").
+ * The only file in src/renderer allowed to contain literal colours (tests/unit/design-tokens.test.ts).
+ * Theme: data-theme="light" | "dark" on <html>; without it the system preference decides.
+ */
+:root,
+[data-theme='light'] {
+  --hp-bg-canvas: #f4efe6;
+  --hp-bg-surface: #fffcf6;
+  --hp-bg-sunken: #ebe4d6;
+  --hp-bg-sidebar: #ece5d7;
+  --hp-bg-inverse: #1d1a15;
+  --hp-line-default: #ddd3c1;
+  --hp-line-strong: #c3b7a1;
+  --hp-text-primary: #1d1a15;
+  --hp-text-secondary: #5a5246;
+  --hp-text-muted: #6b6355;
+  --hp-text-inverse: #fffcf6;
+  --hp-accent-ink: #2340a0;
+  --hp-accent-ink-soft: #e2e7f7;
+  --hp-accent-on-ink: #ffffff;
+  --hp-brand-red: #b8351f;
+  --hp-brand-red-soft: #f8e0d8;
+  --hp-brand-blue: #2340a0;
+  --hp-status-ok: #276b43;
+  --hp-status-ok-soft: #dceee2;
+  --hp-status-warn: #865410;
+  --hp-status-warn-soft: #f5e6c8;
+  --hp-status-danger: #b42318;
+  --hp-status-danger-soft: #f7dcd7;
+  --hp-shadow-color: 29 26 21;
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  --hp-bg-canvas: #15130f;
+  --hp-bg-surface: #1e1b16;
+  --hp-bg-sunken: #100e0b;
+  --hp-bg-sidebar: #1a1713;
+  --hp-bg-inverse: #f2ece1;
+  --hp-line-default: #332e26;
+  --hp-line-strong: #4a4337;
+  --hp-text-primary: #f2ece1;
+  --hp-text-secondary: #b9af9f;
+  --hp-text-muted: #9a907f;
+  --hp-text-inverse: #1d1a15;
+  --hp-accent-ink: #8ea6ff;
+  --hp-accent-ink-soft: #1e2645;
+  --hp-accent-on-ink: #0f1530;
+  --hp-brand-red: #f0674f;
+  --hp-brand-red-soft: #3a1d17;
+  --hp-brand-blue: #8ea6ff;
+  --hp-status-ok: #5bc489;
+  --hp-status-ok-soft: #16301f;
+  --hp-status-warn: #e6a945;
+  --hp-status-warn-soft: #33270f;
+  --hp-status-danger: #f2786d;
+  --hp-status-danger-soft: #3a1714;
+  --hp-shadow-color: 0 0 0;
+  color-scheme: dark;
+}
+
+/* Theme = System: the dark block again, applied when the OS asks for dark and no explicit light was chosen. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --hp-bg-canvas: #15130f;
+    --hp-bg-surface: #1e1b16;
+    --hp-bg-sunken: #100e0b;
+    --hp-bg-sidebar: #1a1713;
+    --hp-bg-inverse: #f2ece1;
+    --hp-line-default: #332e26;
+    --hp-line-strong: #4a4337;
+    --hp-text-primary: #f2ece1;
+    --hp-text-secondary: #b9af9f;
+    --hp-text-muted: #9a907f;
+    --hp-text-inverse: #1d1a15;
+    --hp-accent-ink: #8ea6ff;
+    --hp-accent-ink-soft: #1e2645;
+    --hp-accent-on-ink: #0f1530;
+    --hp-brand-red: #f0674f;
+    --hp-brand-red-soft: #3a1d17;
+    --hp-brand-blue: #8ea6ff;
+    --hp-status-ok: #5bc489;
+    --hp-status-ok-soft: #16301f;
+    --hp-status-warn: #e6a945;
+    --hp-status-warn-soft: #33270f;
+    --hp-status-danger: #f2786d;
+    --hp-status-danger-soft: #3a1714;
+    --hp-shadow-color: 0 0 0;
+    color-scheme: dark;
+  }
+}
+
+:root {
+  --hp-font-display: 'Instrument Serif', 'Iowan Old Style', Georgia, serif;
+  --hp-font-ui: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+  --hp-font-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', monospace;
+  --hp-radius-sm: 6px;
+  --hp-radius-md: 8px;
+  --hp-radius-lg: 12px;
+  --hp-radius-xl: 16px;
+  --hp-radius-pill: 999px;
+  --hp-space-1: 4px;
+  --hp-space-2: 8px;
+  --hp-space-3: 12px;
+  --hp-space-4: 16px;
+  --hp-space-5: 20px;
+  --hp-space-6: 24px;
+  --hp-space-8: 32px;
+  --hp-space-9: 36px;
+  --hp-shadow-raise: 0 1px 2px rgb(var(--hp-shadow-color) / 0.06);
+  --hp-shadow-float: 0 12px 40px rgb(var(--hp-shadow-color) / 0.12);
+  --hp-airmail: repeating-linear-gradient(
+    -55deg,
+    var(--hp-brand-red) 0 11px,
+    transparent 11px 22px,
+    var(--hp-brand-blue) 22px 33px,
+    transparent 33px 44px
+  );
+
+  /* Platform badge tiles: fixed hues (not themed), dark enough for white monograms (≥ 4.5:1). */
+  --hp-platform-on: #ffffff;
+  --hp-platform-mock: #5a5246;
+  --hp-platform-x: #14171a;
+  --hp-platform-linkedin: #0a5fb4;
+  --hp-platform-bluesky: #0756c4;
+  --hp-platform-threads: #262626;
+  --hp-platform-facebook: #1458c8;
+  --hp-platform-instagram: #a82a78;
+  --hp-platform-tiktok: #0f3b3c;
+  --hp-platform-youtube: #b8130a;
+  --hp-platform-pinterest: #b8001c;
+}

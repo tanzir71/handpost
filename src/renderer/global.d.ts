@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import type { HandpostApi } from '../shared/api';
 declare global {
   interface Window {

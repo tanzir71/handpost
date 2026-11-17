@@ -1,6 +1,15 @@
-import { app, BrowserWindow, Menu, nativeImage, Notification, powerMonitor, Tray } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  Menu,
+  nativeImage,
+  nativeTheme,
+  Notification,
+  powerMonitor,
+  Tray,
+} from 'electron';
 import { join } from 'node:path';
-import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
 import { openDatabase, type HandpostDatabase } from './db/database';
 import { BrowserEngine, resolveBrowserChannel } from './engine/browser';
 import { LEGACY_IMPORT_NOTICE, migrateLegacyData } from './migrate-legacy';
@@ -11,6 +20,7 @@ import { PLATFORM_IDS } from '../shared/types';
 import { createLocalLogger } from './logging';
 import { InboxService, SETTING_KEYS } from './inbox/service';
 import { defaultHandpostFolder, WRITER_FILE } from './inbox/paths';
+import { readIntegration } from './inbox/integrations';
 import { INBOX_PLATFORMS } from '../shared/inbox-schema';
 
 let mainWindow: BrowserWindow | null = null;
@@ -28,13 +38,6 @@ if (process.platform === 'win32') app.setAppUserModelId('com.tanzir.handpost');
 function resolveAsset(name: string): string {
   const candidates = [join(__dirname, 'assets', name), join(process.cwd(), 'src', 'main', 'assets', name)];
   return candidates.find((path) => existsSync(path)) ?? candidates[0]!;
-}
-/** Writer guides shipped with the app (copied next to the bundle; read from the repo in development). */
-function readIntegration(name: 'HANDPOST_WRITER.md' | 'AGENTS.md'): string {
-  const repo = name === 'AGENTS.md' ? ['codex', 'AGENTS.md'] : ['claude', 'handpost-inbox', 'SKILL.md'];
-  for (const path of [join(__dirname, 'integrations', name), join(process.cwd(), 'integrations', ...repo)])
-    if (existsSync(path)) return readFileSync(path, 'utf8');
-  return '';
 }
 function trayImage(danger: boolean) {
   return nativeImage.createFromPath(resolveAsset(danger ? 'tray-alert.png' : 'tray.png'));
@@ -122,7 +125,8 @@ async function boot() {
     height: 960,
     minWidth: 1024,
     minHeight: 700,
-    backgroundColor: '#090b10',
+    // Canvas colour of the active theme (tokens.css) so the window never flashes the wrong colour.
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#15130f' : '#f4efe6',
     title: 'Handpost',
     icon: resolveAsset('icon.png'),
     webPreferences: {

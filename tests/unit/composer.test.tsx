@@ -61,8 +61,8 @@ describe('Composer', () => {
       />,
     );
     fireEvent.change(screen.getByLabelText('Draft'), { target: { value: '7' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Yo' }));
     fireEvent.click(screen.getByRole('button', { name: 'YouTube Shorts' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'YouTube Shorts' }));
     fireEvent.change(screen.getByLabelText('Short title'), { target: { value: 'My short' } });
     fireEvent.change(screen.getByLabelText('Audience'), { target: { value: 'false' } });
     fireEvent.change(screen.getByLabelText('Visibility'), { target: { value: 'unlisted' } });
@@ -96,6 +96,7 @@ describe('Composer', () => {
   it('Post now sends the current time rather than the datetime picker value', async () => {
     render(<Composer accounts={[{ id: 1, platform: 'x' }]} templates={[]} onSaved={() => {}} />);
     const before = Date.now();
+    fireEvent.click(screen.getByRole('radio', { name: 'Post now' }));
     fireEvent.click(screen.getByRole('button', { name: 'Post now' }));
     await waitFor(() => expect(mockApi.savePost).toHaveBeenCalledOnce());
     const input = mockApi.savePost.mock.calls[0]![0] as any;
@@ -109,8 +110,7 @@ describe('Composer', () => {
 describe('X thread composer', () => {
   it('persists continuation posts with the X target', async () => {
     render(<Composer accounts={[{ id: 1, platform: 'x' }]} templates={[]} onSaved={() => {}} />);
-    const xButtons = screen.getAllByRole('button', { name: 'X' });
-    fireEvent.click(xButtons.at(-1)!);
+    fireEvent.click(screen.getByRole('tab', { name: 'X' }));
     fireEvent.change(screen.getByLabelText(/Continuation posts/), {
       target: { value: 'Second post\n---\nThird post' },
     });

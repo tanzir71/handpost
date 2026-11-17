@@ -1,12 +1,8 @@
 /** Receipts (`receipts/<id>.json`) and the status snapshot (`handpost.status.json`), INBOX_PROTOCOL §8–9. */
 import { capabilities } from '../../shared/capabilities';
-import {
-  INBOX_PLATFORMS,
-  PROTOCOL_VERSION,
-  type InboxIssue,
-  type InboxItemState,
-} from '../../shared/inbox-schema';
+import { INBOX_PLATFORMS, PROTOCOL_VERSION, type InboxItemState } from '../../shared/inbox-schema';
 import type { PlatformId } from '../../shared/types';
+import type { Receipt, ReceiptTarget } from '../../shared/inbox-types';
 import type { HandpostDatabase } from '../db/database';
 import { nextQueueSlots } from '../posts/create';
 import { CircuitBreaker } from '../scheduler/circuit-breaker';
@@ -21,29 +17,7 @@ export function isoSeconds(value: string | Date | null | undefined): string | nu
   return Number.isNaN(date.getTime()) ? null : date.toISOString().replace(/\.\d{3}Z$/, 'Z');
 }
 
-export interface ReceiptTarget {
-  platform: string;
-  status: string;
-  scheduled_at: string | null;
-  published_at: string | null;
-  url: string | null;
-  error: { code: string; class: string; message: string } | null;
-}
-
-export interface Receipt {
-  handpost: 1;
-  id: string;
-  state: InboxItemState;
-  source: string | null;
-  file: string | null;
-  received_at: string;
-  updated_at: string;
-  replaced_at?: string;
-  mode: string;
-  warnings: InboxIssue[];
-  errors: InboxIssue[];
-  targets: ReceiptTarget[];
-}
+export type { Receipt, ReceiptTarget };
 
 interface TargetDetail {
   id: number;

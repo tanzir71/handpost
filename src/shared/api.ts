@@ -11,6 +11,25 @@ import type {
   TemplateRow,
 } from './rows';
 import type { PlatformId } from './types';
+import type {
+  AutomationInfo,
+  BreakerRow,
+  InboxHealth,
+  InboxListItem,
+  PacingRow,
+  Receipt,
+  WriterRow,
+} from './inbox-types';
+
+export interface AppInfo {
+  version: string;
+  dataDir: string;
+  electron: string;
+  chrome: string;
+  platform: string;
+}
+export type InboxOpenTarget =
+  { target: 'folder' | 'inbox' | 'rejected' | 'receipts' } | { target: 'receipt'; id: string };
 export interface HandpostSnapshot {
   accounts: AccountRow[];
   posts: PostRow[];
@@ -70,4 +89,18 @@ export interface HandpostApi {
   openManual(targetId: number): Promise<void>;
   openExternal(url: string): Promise<void>;
   readArtifact(path: string): Promise<string>;
+  inboxList(): Promise<InboxListItem[]>;
+  inboxHealth(): Promise<InboxHealth | null>;
+  inboxApprove(id: string): Promise<Receipt | null>;
+  inboxReject(id: string): Promise<Receipt | null>;
+  inboxWriters(): Promise<WriterRow[]>;
+  inboxOpen(request: InboxOpenTarget): Promise<void>;
+  inboxChooseFolder(): Promise<string>;
+  automationInfo(): Promise<AutomationInfo>;
+  copyAgents(): Promise<string>;
+  pacingToday(): Promise<PacingRow[]>;
+  breakers(): Promise<BreakerRow[]>;
+  cancelTarget(input: { targetId: number }): Promise<void>;
+  publishNow(input: { targetId: number }): Promise<void>;
+  appInfo(): Promise<AppInfo>;
 }

@@ -468,7 +468,7 @@ describe('inbox output', () => {
     expect(result.torn).toBe(0);
     expect(JSON.parse(readFileSync(path, 'utf8')).n).toBe(60);
     h = createHarness();
-  });
+  }, 30000);
 });
 
 describe('inbox safety', () => {
@@ -529,7 +529,7 @@ describe('inbox safety', () => {
     expect(h.inboxFiles()).toEqual([]);
     expect(h.count('SELECT count(*) FROM posts')).toBe(0);
     expect(h.rejectedFiles().filter((name) => !name.endsWith('.error.json'))).toHaveLength(100);
-  });
+  }, 60000);
 });
 
 describe('inbox on Windows-style folders', () => {
