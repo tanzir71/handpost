@@ -17,3 +17,19 @@ This matrix separates automatable evidence from the handoff's explicitly owner-r
 | M10 | Queue slots, template variables, ten-row CSV distribution, archive wipe/restore including evidence, tray/login settings, filterable History, empty states, zero TODO scan | None |
 
 The detailed owner procedure and failure drills are in `docs/LIVE_TEST.md`. Live gates are never inferred from fixture or CI results.
+
+## Handpost milestones (H0–H10)
+
+| Milestone | Automatable evidence (commands) | Owner-only evidence |
+|---|---|---|
+| H0 | `npm ci && npm run check && npm run build`; LF everywhere (`git ls-files --eol`); no `any` in `src/` (lint) | CI run on GitHub |
+| H1 | `git grep -iw relay -- src tests` only in the migration module and its test; migration unit tests | — |
+| H2 | `npm run test -- inbox` (full §5.6 matrix), inbox → MockSocial → receipt e2e, crash-between-commit-and-move test | — |
+| H3 | WCAG contrast test for every token pair, no hex outside `tokens.css`, `#/__gallery` in `scripts/verify-ui.ts` | Compare with Figma Foundations `0:1` |
+| H4 | Screen tests (Inbox filters/approve/reject, slot editor, Compose modes, empty states), `npx tsx scripts/verify-ui.ts` (both themes, keyboard) | Compare each screen with its Figma frame |
+| H5 | Schema-equality test, guide code-block validation, receipt/status schema validation, `npm run inbox:smoke` | Add the skill to Claude and run a scheduled task |
+| H6 | Identity per platform, no placeholder URLs, rehearsal contract on all 9 fixtures, `chrome_missing`, rehearsal e2e | Rehearse each connected platform; `docs/LIVE_TEST.md` |
+| H7 | `npm run dist`; `npm run dist:dir && npm run smoke:packaged`; installed-copy smoke (`HANDPOST_EXE=… npm run smoke:packaged`) | Push a `v*` tag to run `release.yml`; publish the draft release |
+| H8 | `npm run website:verify`, `npm run website:browser` (served under `/handpost/`) | Enable GitHub Pages; check the live URL |
+| H9 | Git source tests against a local bare repository (`npm run test -- git-source`) | Point it at a real repository |
+| H10 | Seeded inbox fuzzing, receipt/state audit, `npm run drift-audit`, MCP server tests | Recapture fixtures from real pages over time |

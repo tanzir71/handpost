@@ -5,6 +5,7 @@ import type { BrowserEngine } from '../engine/browser';
 import { adapterConfigs } from '../adapters/configs';
 import { getAdapter } from '../adapters';
 import { captureIdentity } from './identity-store';
+import { resumeAfterLogin } from './resume';
 
 interface ConnectOptions {
   pollMs?: number;
@@ -45,6 +46,7 @@ export async function connectAccount(
         resolved = true;
         if (timer) clearInterval(timer);
         persist('ok');
+        resumeAfterLogin(db, platform);
         await captureIdentity(db, platform, getAdapter(platform), page);
         await engine.close(platform);
       }
@@ -61,6 +63,7 @@ export async function connectAccount(
         .checkSession(context)
         .catch(() => 'logged_out' as const);
       persist(status === 'ok' ? 'ok' : status === 'challenged' ? 'challenged' : 'needs_login');
+      if (status === 'ok') resumeAfterLogin(db, platform);
       await engine.close(platform).catch(() => undefined);
     })();
   });

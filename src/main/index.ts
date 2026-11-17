@@ -43,6 +43,14 @@ if (process.platform === 'win32') app.setAppUserModelId('com.tanzir.handpost');
  * smoke run never copies real data) and HANDPOST_FOLDER replaces the Handpost folder.
  */
 const dataDirOverride = process.env.HANDPOST_DATA_DIR;
+/**
+ * HANDPOST_QUIET=1 (smoke tests): no desktop notifications — on Windows the first toast registers a Start-menu
+ * shortcut — and the login-item setting is left alone.
+ */
+const quiet = process.env.HANDPOST_QUIET === '1';
+function desktopNotify(title: string, body: string): void {
+  if (!quiet) new Notification({ title, body }).show();
+}
 if (dataDirOverride) app.setPath('userData', dataDirOverride);
 function resolveAsset(name: string): string {
   const candidates = [join(__dirname, 'assets', name), join(process.cwd(), 'src', 'main', 'assets', name)];
@@ -97,7 +105,7 @@ async function boot() {
     );
   const notify = (title: string, body: string) => {
     if (db.prepare("SELECT value FROM settings WHERE key='notifications'").pluck().get() !== 'false')
-      new Notification({ title, body }).show();
+      desktopNotify(title, body);
   };
   const writerGuide = readIntegration(WRITER_FILE);
   const settingValue = (key: string) =>
@@ -137,16 +145,18 @@ async function boot() {
     return gitSource.health();
   };
   gitTimer = setInterval(() => void gitCycle(), 5 * 60_000);
-  app.setLoginItemSettings({
-    openAtLogin: db.prepare("SELECT value FROM settings WHERE key='launchAtLogin'").pluck().get() === 'true',
-  });
+  if (!quiet)
+    app.setLoginItemSettings({
+      openAtLogin:
+        db.prepare("SELECT value FROM settings WHERE key='launchAtLogin'").pluck().get() === 'true',
+    });
   scheduler = new Scheduler(
     db,
     engine,
     (title, body) => {
       localLog?.logger.warn({ title }, 'Scheduler notification');
       if (db.prepare("SELECT value FROM settings WHERE key='notifications'").pluck().get() !== 'false')
-        new Notification({ title, body }).show();
+        desktopNotify(title, body);
       updateTray(db);
     },
     undefined,
@@ -222,11 +232,7 @@ async function boot() {
       },
     ]),
   );
-  if (legacy.migrated)
-    new Notification({
-      title: LEGACY_IMPORT_NOTICE.title,
-      body: LEGACY_IMPORT_NOTICE.body,
-    }).show();
+  if (legacy.migrated) desktopNotify(LEGACY_IMPORT_NOTICE.title, LEGACY_IMPORT_NOTICE.body);
   localLog.logger.info('Handpost ready');
 }
 app

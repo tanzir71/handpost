@@ -45,6 +45,18 @@ cd ~/Handpost && codex exec "Write today's release-notes post for X and LinkedIn
 
 Writers that run in the cloud and can't see your disk (a cloud-run Claude task, a GitHub Action, Codex cloud) push files to a Git repository's `inbox/` folder instead; enable Settings → Automation → Remote source with that repository. Handpost pulls every 5 minutes. A synced folder (Dropbox, OneDrive, Google Drive) chosen as the Handpost folder also works — turn off “Include post text in status file” if you don't want previews synced.
 
+## E. Local MCP server (optional)
+
+For tools that prefer MCP tools over writing files, the repository includes `handpost-mcp`, a small stdio server. It does nothing a file-writing writer couldn't: it validates a post against the protocol, drops it into `inbox/` atomically, writes cancel files, and reads `receipts/` and `handpost.status.json`. It never talks to the app, a browser or the network, so every guardrail of the inbox still applies.
+
+Build it once from a checkout (`npm run build` produces `dist/mcp/server.cjs`), then register it with your MCP client — for Claude Code, for example:
+
+```sh
+claude mcp add handpost -- node /path/to/handpost/dist/mcp/server.cjs --folder ~/Handpost
+```
+
+(Verify the subcommand with `claude mcp --help` for your version; for other clients, run the same `node … --folder …` command as a stdio server.) Tools: `handpost_status`, `handpost_write_post`, `handpost_cancel`, `handpost_receipt`, `handpost_list_receipts`.
+
 ## Checking that it works
 
 | Symptom | Look at |
@@ -53,7 +65,7 @@ Writers that run in the cloud and can't see your disk (a cloud-run Claude task, 
 | File moved to `rejected/` | `rejected/<file>.error.json` — codes are listed in INBOX_PROTOCOL §10. |
 | `state: duplicate` | The id was already used with identical content: nothing to do. |
 | `state: held` | Auto-schedule is off or the file asked for `mode: review` — approve it in the Inbox screen. |
-| Target `needs_login` | Log in again in Accounts → the queued post resumes. |
+| Target `needs_login` | Log in again in Accounts → posts that stopped there go back into the queue (anything more than two hours late waits in the Queue for you instead). |
 
 ## Dry run without any account (developers)
 

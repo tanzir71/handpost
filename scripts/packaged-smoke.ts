@@ -13,6 +13,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 function executable(): string {
+  // An installed copy can be tested too: HANDPOST_EXE=C:\path\to\Handpost.exe npm run smoke:packaged
+  if (process.env.HANDPOST_EXE) return process.env.HANDPOST_EXE;
   if (process.platform === 'win32') return join('release', 'win-unpacked', 'Handpost.exe');
   if (process.platform === 'darwin') {
     for (const dir of ['mac-universal', 'mac', 'mac-arm64'])
@@ -37,12 +39,17 @@ async function waitFor<T>(
 }
 
 const exe = executable();
-if (!existsSync(exe)) throw new Error(`${exe} not found — run npm run dist:dir first`);
+if (!existsSync(exe)) throw new Error(`${exe} not found — run npm run dist:dir first (or set HANDPOST_EXE)`);
 const base = await mkdtemp(join(tmpdir(), 'handpost-packaged-'));
 const dataDir = join(base, 'data');
 const folder = join(base, 'Handpost');
 // Electron treats ELECTRON_RUN_AS_NODE as set even when empty, so remove it rather than blanking it.
-const childEnv: NodeJS.ProcessEnv = { ...process.env, HANDPOST_DATA_DIR: dataDir, HANDPOST_FOLDER: folder };
+const childEnv: NodeJS.ProcessEnv = {
+  ...process.env,
+  HANDPOST_DATA_DIR: dataDir,
+  HANDPOST_FOLDER: folder,
+  HANDPOST_QUIET: '1',
+};
 delete childEnv.ELECTRON_RUN_AS_NODE;
 const child = spawn(exe, process.platform === 'linux' ? ['--no-sandbox'] : [], {
   env: childEnv,
