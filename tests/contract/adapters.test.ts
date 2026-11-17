@@ -39,9 +39,11 @@ beforeAll(async () => {
 }, 30_000);
 afterAll(async () => {
   await browser.close();
+  // Keep-alive sockets from closed pages would otherwise hold close() open.
+  server.closeAllConnections();
   await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
   await rm(root, { recursive: true, force: true });
-});
+}, 60_000);
 
 describe.each(adapterConfigs.filter((config) => config.id !== 'mock'))(
   '$id adapter browser contract',

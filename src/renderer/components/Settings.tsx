@@ -11,7 +11,7 @@ import {
   Upload,
 } from 'lucide-react';
 import type { AppInfo } from '../../shared/api';
-import type { AutomationInfo, WriterRow } from '../../shared/inbox-types';
+import type { AutomationInfo, GitHealthView, WriterRow } from '../../shared/inbox-types';
 import type { CsvPlanRow, SettingRow } from '../../shared/rows';
 import { handpostApi } from '../lib/api';
 import { relative, shortPath } from '../lib/format';
@@ -258,14 +258,7 @@ function Automation({
             />
           </div>
         </Card>
-        {remoteSource ?? (
-          <Card title="Remote source (Git, optional)">
-            <p className="t-body-s secondary-text">
-              For writers that run in the cloud: Handpost can pull a Git repository's <code>inbox/</code>{' '}
-              every 5 minutes. Off by default — it is the only network access besides the platforms.
-            </p>
-          </Card>
-        )}
+        {remoteSource ?? <RemoteSource value={value} save={save} />}
       </div>
       <aside className="settings-grid">
         <Card title="Connect a Claude scheduled task" stripe>
@@ -539,5 +532,108 @@ function About() {
         </div>
       </Card>
     </div>
+  );
+}
+
+function RemoteSource({ value, save }: { value: ValueFn; save: SaveFn }) {
+  const enabled = value('git.enabled', 'false') === 'true';
+  const [url, setUrl] = useState(value('git.url', ''));
+  const [health, setHealth] = useState<GitHealthView | null>(null);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const next = await handpostApi.gitHealth();
+        if (alive) setHealth(next);
+      } catch {
+        // No main process (demo/tests): the card still renders.
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [enabled]);
+  const run = async (action: () => Promise<unknown>) => {
+    setBusy(true);
+    setError('');
+    try {
+      await action();
+      setHealth(await handpostApi.gitHealth());
+    } catch (value) {
+      setError(value instanceof Error ? value.message : String(value));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Card title="Remote source (Git, optional)">
+      <p className="t-body-s secondary-text">
+        For writers that run in the cloud and cannot reach this computer: Handpost clones one Git repository
+        into
+        <code> .sources/</code> with your existing Git credentials, pulls every 5 minutes and reads its{' '}
+        <code>inbox/</code>. It is the only network access besides the platforms, and it is off unless you
+        turn it on.
+      </p>
+      <form
+        className="folder-row"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void run(() => save('git.url', url.trim()));
+        }}
+      >
+        <label className="hp-field folder-row__field">
+          <span className="sr-only">Repository URL</span>
+          <input
+            value={url}
+            placeholder="https://github.com/you/handpost-inbox.git"
+            onChange={(event) => setUrl(event.target.value)}
+          />
+        </label>
+        <Button type="submit" disabled={busy || url.trim() === value('git.url', '')}>
+          Save URL
+        </Button>
+      </form>
+      <div>
+        <ToggleRow
+          title="Pull this repository"
+          detail="Clones on first use, then pulls every 5 minutes (60 s timeout). Files in the clone are never moved."
+          checked={enabled}
+          disabled={!value('git.url', '')}
+          onChange={(next) => void run(() => save('git.enabled', String(next)))}
+        />
+        <ToggleRow
+          title="Push receipts back"
+          detail="Commits receipts/<id>.json for this repository's posts and pushes them, so cloud writers can read results."
+          checked={value('git.pushReceipts', 'false') === 'true'}
+          disabled={!enabled}
+          onChange={(next) => void run(() => save('git.pushReceipts', String(next)))}
+        />
+      </div>
+      {enabled && (
+        <div className="git-status">
+          <span
+            className={`hp-dot hp-dot--${health?.state === 'off' ? 'warn' : (health?.state ?? 'warn')}`}
+            aria-hidden="true"
+          />
+          <span className="t-body-s">
+            {health?.lastError
+              ? health.lastError
+              : health?.lastSyncAt
+                ? `Last pulled ${relative(health.lastSyncAt)} into .sources/${health.name}`
+                : 'Not pulled yet'}
+          </span>
+          <Button size="s" disabled={busy} onClick={() => void run(() => handpostApi.gitSyncNow())}>
+            {busy ? 'Pulling…' : 'Pull now'}
+          </Button>
+        </div>
+      )}
+      {error && (
+        <p role="alert" className="hp-callout hp-callout--danger">
+          {error}
+        </p>
+      )}
+    </Card>
   );
 }

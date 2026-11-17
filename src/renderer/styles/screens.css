@@ -1067,3 +1067,15 @@ textarea.csv {
   border-radius: var(--hp-radius-sm);
   border: 1px solid var(--hp-line-default);
 }
+.folder-row__field {
+  flex: 1;
+}
+.git-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.git-status .t-body-s {
+  flex: 1;
+  color: var(--hp-text-secondary);
+}

@@ -1,0 +1,58 @@
+name: release
+# Builds installers on a version tag and attaches them to a *draft* GitHub Release for the owner to publish.
+# No auto-updater consumes these: Handpost never checks for updates on its own.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      # Tests drive Playwright's Chromium; the packaged app never bundles a browser.
+      - run: npx playwright install --with-deps chromium
+      - name: Check (Linux needs a display for Electron-as-Node tests that open windows)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npm run check
+      - name: Check
+        if: runner.os != 'Linux'
+        run: npm run check
+      - run: npm run dist
+        env:
+          # Unsigned builds: no certificate lookup on macOS.
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: handpost-${{ matrix.os }}
+          path: |
+            release/*.exe
+            release/*.dmg
+            release/*.AppImage
+          if-no-files-found: error
+  draft-release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: artifacts, merge-multiple: true }
+      - name: Create or update the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft --title "Handpost $TAG" \
+              --notes "Unsigned builds. Windows: SmartScreen → More info → Run anyway. macOS: right-click → Open the first time. See README → Installing."
+          fi
+          gh release upload "$TAG" artifacts/* --repo "$GITHUB_REPOSITORY" --clobber

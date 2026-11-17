@@ -496,5 +496,21 @@ export function createDemoApi(): HandpostApi {
       ],
       error: null,
     }),
+    gitHealth: async () => ({
+      enabled: false,
+      url: '',
+      name: null,
+      lastSyncAt: null,
+      lastError: null,
+      state: 'off',
+    }),
+    gitSyncNow: async () => ({
+      enabled: false,
+      url: '',
+      name: null,
+      lastSyncAt: null,
+      lastError: null,
+      state: 'off',
+    }),
   };
 }

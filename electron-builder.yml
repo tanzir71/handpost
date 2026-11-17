@@ -1,0 +1,57 @@
+# Packaging (H7). `npm run dist` builds for the current OS into release/.
+# No auto-updater and no publish target: Handpost never phones home (CLAUDE.md). Releases are uploaded by
+# .github/workflows/release.yml to a draft GitHub Release.
+appId: com.tanzir.handpost
+productName: Handpost
+copyright: Copyright © 2026 Tanzir Rahman
+directories:
+  output: release
+  buildResources: build
+files:
+  - dist/**/*
+  - package.json
+  - '!**/*.map'
+# Native module and SQL migrations must be real files on disk (better-sqlite3 dlopen; migrations read at boot).
+asarUnpack:
+  - '**/node_modules/better-sqlite3/**'
+  - 'dist/main/migrations/**'
+# Playwright drives the installed Chrome/Edge; never ship its downloadable browsers.
+extraMetadata:
+  main: dist/main/index.cjs
+npmRebuild: true
+publish: null
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: build/icon.ico
+  artifactName: Handpost-Setup-${version}.${ext}
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: false
+  createStartMenuShortcut: true
+  shortcutName: Handpost
+  uninstallDisplayName: Handpost
+  deleteAppDataOnUninstall: false
+  # No auto-updater, so no differential-update blockmap.
+  differentialPackage: false
+mac:
+  target:
+    - target: dmg
+      arch: [universal]
+  icon: build/icon.icns
+  category: public.app-category.productivity
+  # Unsigned: first launch needs right-click → Open (README "Installing").
+  identity: null
+  artifactName: Handpost-${version}-mac.${ext}
+dmg:
+  title: Handpost ${version}
+linux:
+  target:
+    - target: AppImage
+      arch: [x64]
+  icon: build/icon.png
+  category: Office
+  artifactName: Handpost-${version}-linux-${arch}.${ext}

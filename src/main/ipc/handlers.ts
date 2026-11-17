@@ -33,12 +33,14 @@ import type { InboxService } from '../inbox/service';
 import { identityFromUrl } from '../adapters/identity';
 import { rehearsalPost } from '../accounts/rehearsal';
 import type { BrowserInfo } from '../engine/browser-detect';
+import { validGitUrl, type GitHealth } from '../inbox/git-source';
 import type { RehearsalInput, RehearsalResult } from '../scheduler/scheduler';
 import type { PlatformId } from '../../shared/types';
 import { existsSync } from 'node:fs';
 
 export interface LiveDeps {
   browserInfo?: () => BrowserInfo;
+  git?: { health(): GitHealth; syncNow(): Promise<GitHealth> };
   rehearse?: (platform: PlatformId, input: RehearsalInput) => Promise<RehearsalResult>;
 }
 import { inboxIdSchema, inboxOpenSchema, profileUrlSchema, targetIdSchema } from '../../shared/ipc';
@@ -178,6 +180,8 @@ export function registerHandlers(
   });
   handle('save-setting', (raw) => {
     const v = settingSchema.parse(raw);
+    if (v.key === 'git.url' && v.value && !validGitUrl(v.value))
+      throw new Error('Use an https://, ssh://, git@host:path or file:// Git URL');
     db.prepare(
       'INSERT INTO settings(key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',
     ).run(v.key, v.value);
@@ -251,7 +255,11 @@ export function registerHandlers(
     if (!inbox) throw new Error('The inbox is not running');
     return inbox;
   };
-  handle('inbox-health', async () => (inbox ? await inbox.health() : null));
+  handle('inbox-health', async () =>
+    inbox ? { ...(await inbox.health()), git: live.git?.health() ?? null } : null,
+  );
+  handle('git-health', () => live.git?.health() ?? null);
+  handle('git-sync-now', async () => (live.git ? live.git.syncNow() : null));
   handle('inbox-list', () => inbox?.list() ?? []);
   handle('inbox-approve', (raw) => needInbox().approve(inboxIdSchema.parse(raw)));
   handle('inbox-reject', (raw) => needInbox().reject(inboxIdSchema.parse(raw)));

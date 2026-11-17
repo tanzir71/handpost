@@ -65,6 +65,16 @@ export function Sidebar({ screen, onNavigate, health, inboxCount, queueAttention
         <small className={dot === 'ok' ? undefined : `watcher__note watcher__note--${dot}`}>
           {watcherText}
         </small>
+        {health?.git?.enabled && (
+          <small className={health.git.lastError ? 'watcher__note watcher__note--warn' : undefined}>
+            Git {health.git.name}:{' '}
+            {health.git.lastError
+              ? 'pull failed'
+              : health.git.lastSyncAt
+                ? `pulled ${relative(health.git.lastSyncAt)}`
+                : 'not pulled yet'}
+          </small>
+        )}
         {health && (health.held > 0 || health.waitingMedia > 0) && (
           <small>
             {health.held} held · {health.waitingMedia} waiting for media

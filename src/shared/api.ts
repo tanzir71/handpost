@@ -14,6 +14,7 @@ import type { PlatformId } from './types';
 import type {
   AutomationInfo,
   BreakerRow,
+  GitHealthView,
   InboxHealth,
   InboxListItem,
   PacingRow,
@@ -126,4 +127,6 @@ export interface HandpostApi {
   }): Promise<{ handle: string; profileUrl: string } | null>;
   /** Fills the platform's composer, screenshots and discards it. `null` when the owner cancelled a video pick. */
   rehearse(input: { platform: PlatformId }): Promise<RehearsalView | null>;
+  gitHealth(): Promise<GitHealthView | null>;
+  gitSyncNow(): Promise<GitHealthView | null>;
 }

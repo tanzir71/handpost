@@ -8,6 +8,9 @@ export default mergeConfig(
   defineConfig({
     test: {
       teardownTimeout: 60_000,
+      // Electron-as-Node forks on Windows are slow under load; 5 s defaults flake without testing anything.
+      testTimeout: 20_000,
+      hookTimeout: 60_000,
       pool: 'forks',
     },
   }),

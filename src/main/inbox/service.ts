@@ -1181,6 +1181,11 @@ export class InboxService extends EventEmitter {
     return items.sort((a, b) => b.receivedAt.localeCompare(a.receivedAt));
   }
 
+  /** Item ids that arrived through one root (e.g. `git:posts`), for pushing their receipts back. */
+  idsForRoot(root: string): string[] {
+    return this.options.db.prepare('SELECT id FROM inbox_items WHERE root=?').pluck().all(root) as string[];
+  }
+
   /** Sources that wrote files, for Settings → Automation → Writers seen. */
   writers(): WriterRow[] {
     return (

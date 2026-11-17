@@ -37,5 +37,7 @@ const api: HandpostApi = {
   browserInfo: () => ipcRenderer.invoke('browser-info'),
   setProfileUrl: (v) => ipcRenderer.invoke('set-profile-url', v),
   rehearse: (v) => ipcRenderer.invoke('rehearse', v),
+  gitHealth: () => ipcRenderer.invoke('git-health'),
+  gitSyncNow: () => ipcRenderer.invoke('git-sync-now'),
 };
 contextBridge.exposeInMainWorld('handpost', api);

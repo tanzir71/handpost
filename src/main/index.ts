@@ -22,6 +22,7 @@ import { createLocalLogger } from './logging';
 import { InboxService, SETTING_KEYS } from './inbox/service';
 import { defaultHandpostFolder, WRITER_FILE } from './inbox/paths';
 import { readIntegration } from './inbox/integrations';
+import { GitSource } from './inbox/git-source';
 import { INBOX_PLATFORMS } from '../shared/inbox-schema';
 
 let mainWindow: BrowserWindow | null = null;
@@ -33,9 +34,16 @@ let localLog: ReturnType<typeof createLocalLogger> | null = null;
 let trayTimer: ReturnType<typeof setInterval> | null = null;
 let shutdownReady = false;
 let inbox: InboxService | null = null;
+let gitTimer: ReturnType<typeof setInterval> | null = null;
 /** Set when the user really quits (tray menu or OS); otherwise closing the window only hides it. */
 let isQuitting = false;
 if (process.platform === 'win32') app.setAppUserModelId('com.tanzir.handpost');
+/**
+ * Smoke/CI overrides: HANDPOST_DATA_DIR replaces the user-data folder (and skips the one-time legacy-data import, so a
+ * smoke run never copies real data) and HANDPOST_FOLDER replaces the Handpost folder.
+ */
+const dataDirOverride = process.env.HANDPOST_DATA_DIR;
+if (dataDirOverride) app.setPath('userData', dataDirOverride);
 function resolveAsset(name: string): string {
   const candidates = [join(__dirname, 'assets', name), join(process.cwd(), 'src', 'main', 'assets', name)];
   return candidates.find((path) => existsSync(path)) ?? candidates[0]!;
@@ -59,7 +67,9 @@ async function boot() {
   mkdirSync(dataDir, { recursive: true });
   localLog = createLocalLogger(dataDir);
   localLog.logger.info('Handpost starting');
-  const legacy = migrateLegacyData(app.getPath('appData'), dataDir);
+  const legacy = dataDirOverride
+    ? { migrated: false as const, from: null, copied: [], failed: [] }
+    : migrateLegacyData(app.getPath('appData'), dataDir);
   if (legacy.migrated)
     localLog.logger.info(
       { from: legacy.from, copied: legacy.copied, failed: legacy.failed },
@@ -90,11 +100,23 @@ async function boot() {
       new Notification({ title, body }).show();
   };
   const writerGuide = readIntegration(WRITER_FILE);
+  const settingValue = (key: string) =>
+    db.prepare('SELECT value FROM settings WHERE key=?').pluck().get(key) as string | undefined;
+  // Optional remote Git source (off by default; the only network access besides the platforms).
+  const gitSource = new GitSource(() => inbox!.folder);
+  const gitConfig = () => ({
+    enabled: settingValue('git.enabled') === 'true',
+    url: settingValue('git.url') ?? '',
+    pushReceipts: settingValue('git.pushReceipts') === 'true',
+  });
+  gitSource.configure(gitConfig());
   inbox = new InboxService({
     db,
     root:
       (db.prepare('SELECT value FROM settings WHERE key=?').pluck().get(SETTING_KEYS.path) as
-        string | undefined) ?? defaultHandpostFolder(app.getPath('home')),
+        string | undefined) ??
+      process.env.HANDPOST_FOLDER ??
+      defaultHandpostFolder(app.getPath('home')),
     mediaStore: join(dataDir, 'media'),
     appVersion: app.getVersion(),
     // MockSocial is only accepted from the inbox in development smoke runs.
@@ -104,7 +126,17 @@ async function boot() {
       notify(title, body);
     },
     layoutFiles: writerGuide ? { [WRITER_FILE]: writerGuide } : {},
+    extraRoots: () => gitSource.roots(),
   });
+  const gitCycle = async () => {
+    if (!gitSource.health().enabled || !inbox) return gitSource.health();
+    await gitSource.sync();
+    await inbox.rescan();
+    await inbox.idle();
+    if (gitSource.name) await gitSource.pushReceipts(inbox.idsForRoot(`git:${gitSource.name}`));
+    return gitSource.health();
+  };
+  gitTimer = setInterval(() => void gitCycle(), 5 * 60_000);
   app.setLoginItemSettings({
     openAtLogin: db.prepare("SELECT value FROM settings WHERE key='launchAtLogin'").pluck().get() === 'true',
   });
@@ -122,10 +154,23 @@ async function boot() {
     { browserReady: () => browser().found },
   );
   const activeScheduler = scheduler;
-  registerHandlers(db, engine, dataDir, inbox, undefined, {
-    browserInfo: browser,
-    rehearse: (platform, input) => activeScheduler.rehearse(platform, input),
-  });
+  registerHandlers(
+    db,
+    engine,
+    dataDir,
+    inbox,
+    (key) => {
+      if (key.startsWith('git.')) {
+        gitSource.configure(gitConfig());
+        void gitCycle();
+      }
+    },
+    {
+      git: { health: () => gitSource.health(), syncNow: gitCycle },
+      browserInfo: browser,
+      rehearse: (platform, input) => activeScheduler.rehearse(platform, input),
+    },
+  );
   scheduler.start();
   await inbox
     .start()
@@ -136,6 +181,7 @@ async function boot() {
       ),
     );
   powerMonitor.on('resume', () => void inbox?.rescan());
+  void gitCycle();
   mainWindow = new BrowserWindow({
     width: 1440,
     height: 960,
@@ -199,6 +245,7 @@ app.on('before-quit', (event) => {
   isQuitting = true;
   scheduler?.stop();
   if (trayTimer) clearInterval(trayTimer);
+  if (gitTimer) clearInterval(gitTimer);
   if (shutdownReady) return;
   event.preventDefault();
   void (async () => {

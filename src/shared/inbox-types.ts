@@ -36,6 +36,17 @@ export interface InboxHealth {
   held: number;
   waitingMedia: number;
   rejectedToday: number;
+  /** The optional remote Git source (H9), when configured. */
+  git?: GitHealthView | null;
+}
+
+export interface GitHealthView {
+  enabled: boolean;
+  url: string;
+  name: string | null;
+  lastSyncAt: string | null;
+  lastError: string | null;
+  state: 'off' | 'ok' | 'warn' | 'danger';
 }
 
 /** One row of the Inbox screen: an item (with its receipt) or a duplicate file that changed nothing. */

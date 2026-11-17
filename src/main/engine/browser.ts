@@ -16,6 +16,8 @@ interface ContextOptions {
 
 export class BrowserEngine {
   private contexts = new Map<PlatformId, ManagedContext>();
+  /** One launch/close at a time per platform: two persistent contexts on one profile would not share a session. */
+  private locks = new Map<PlatformId, Promise<unknown>>();
   constructor(
     private readonly profilesRoot: string,
     private readonly browserChannel: BrowserChannel = 'chrome',
@@ -24,14 +26,28 @@ export class BrowserEngine {
     return this.browserChannel;
   }
 
-  async context(
+  private serialized<T>(platform: PlatformId, task: () => Promise<T>): Promise<T> {
+    const previous = this.locks.get(platform) ?? Promise.resolve();
+    const next = previous.then(task, task);
+    this.locks.set(
+      platform,
+      next.catch(() => undefined),
+    );
+    return next;
+  }
+
+  context(platform: PlatformId, options: ContextOptions = {}): Promise<BrowserContext> {
+    return this.serialized(platform, () => this.openContext(platform, options));
+  }
+
+  private async openContext(
     platform: PlatformId,
-    { headless = false, background = false }: ContextOptions = {},
+    { headless = false, background = false }: ContextOptions,
   ): Promise<BrowserContext> {
     const current = this.contexts.get(platform);
     if (current && !(current.headless && !headless) && !(current.background && !background))
       return current.context;
-    if (current) await this.close(platform);
+    if (current) await this.closeOne(platform);
     const profile = join(this.profilesRoot, platform);
     await mkdir(profile, { recursive: true });
     await chmod(profile, 0o700).catch(() => undefined);
@@ -49,16 +65,22 @@ export class BrowserEngine {
       Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
     });
     this.contexts.set(platform, { context, background, headless });
-    context.on('close', () => this.contexts.delete(platform));
+    // Only forget *this* context: a late close event must not drop a newer context for the same platform.
+    context.on('close', () => {
+      if (this.contexts.get(platform)?.context === context) this.contexts.delete(platform);
+    });
     return context;
   }
 
+  private async closeOne(platform: PlatformId): Promise<void> {
+    const entry = this.contexts.get(platform);
+    if (!entry) return;
+    await entry.context.close();
+    if (this.contexts.get(platform) === entry) this.contexts.delete(platform);
+  }
+
   async close(platform?: PlatformId): Promise<void> {
-    if (platform) {
-      await this.contexts.get(platform)?.context.close();
-      this.contexts.delete(platform);
-      return;
-    }
+    if (platform) return this.serialized(platform, () => this.closeOne(platform));
     await Promise.all([...this.contexts.values()].map((entry) => entry.context.close()));
     this.contexts.clear();
   }

@@ -1,4 +1,5 @@
 import {
+  chmodSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
@@ -139,10 +140,27 @@ export function createHarness(
     async cleanup() {
       await service.stop();
       db.close();
-      rmSync(base, { recursive: true, force: true });
+      removeTree(base);
     },
   };
   return harness;
+}
+
+/** rm -rf that also copes with Git's read-only object files on Windows. */
+export function removeTree(path: string): void {
+  try {
+    rmSync(path, { recursive: true, force: true, maxRetries: 3 });
+  } catch {
+    const makeWritable = (dir: string) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const child = join(dir, entry.name);
+        if (entry.isDirectory()) makeWritable(child);
+        else chmodSync(child, 0o666);
+      }
+    };
+    makeWritable(path);
+    rmSync(path, { recursive: true, force: true, maxRetries: 3 });
+  }
 }
 
 /** A Markdown post file. `front` is raw YAML lines; `body` the post text. */

@@ -12,7 +12,8 @@ relay-ui.png
 .env*
 !.env.example
 
-.vercel
+site/schema/
 test-results/
 handpost-data/
 handpost-ui.png
+release/
