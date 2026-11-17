@@ -1,54 +1,471 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#080b10">
-  <meta name="description" content="Relay Publisher is a local-first desktop social scheduler that drives the web interfaces you already use. Understand the platform-policy risk before installing.">
-  <meta property="og:title" content="Relay Publisher — schedule from your desktop"><meta property="og:description" content="No API rental. No content cloud. Real tradeoffs, stated first."><meta property="og:image" content="/og.svg">
-  <title>Relay Publisher — local-first social scheduling</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/styles.css"><script src="/main.js" defer></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Handpost — your posts, delivered by hand</title>
+  <meta name="description" content="Handpost is a local-first desktop scheduler. It publishes through your own logged-in Chrome — and takes new posts from Claude, Codex or any script as plain files dropped in a folder.">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#15130F" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#F4EFE6">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Handpost">
+  <meta property="og:title" content="Handpost — your posts, delivered by hand">
+  <meta property="og:description" content="A local-first desktop scheduler that publishes through your own logged-in Chrome and takes posts from Claude, Codex or any script as plain files in a folder.">
+  <meta property="og:image" content="./og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Handpost — Your posts, delivered by hand. A red postage stamp with an italic h.">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="./fonts/instrument-serif-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./main.js" defer></script>
 </head>
 <body>
+  <svg class="sprite" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="stamp" viewBox="0 0 30 36">
+      <path style="fill:var(--hp-brand-red)" d="M0 0H0.85C0.85 0.437607 1.02384 0.857291 1.33327 1.16673C1.64271 1.47616 2.06239 1.65 2.5 1.65C2.93761 1.65 3.35729 1.47616 3.66673 1.16673C3.97616 0.857291 4.15 0.437607 4.15 0H5.85C5.85 0.437607 6.02384 0.857291 6.33327 1.16673C6.64271 1.47616 7.06239 1.65 7.5 1.65C7.93761 1.65 8.35729 1.47616 8.66673 1.16673C8.97616 0.857291 9.15 0.437607 9.15 0H10.85C10.85 0.437607 11.0238 0.857291 11.3333 1.16673C11.6427 1.47616 12.0624 1.65 12.5 1.65C12.9376 1.65 13.3573 1.47616 13.6667 1.16673C13.9762 0.857291 14.15 0.437607 14.15 0H15.85C15.85 0.437607 16.0238 0.857291 16.3333 1.16673C16.6427 1.47616 17.0624 1.65 17.5 1.65C17.9376 1.65 18.3573 1.47616 18.6667 1.16673C18.9762 0.857291 19.15 0.437607 19.15 0H20.85C20.85 0.437607 21.0238 0.857291 21.3333 1.16673C21.6427 1.47616 22.0624 1.65 22.5 1.65C22.9376 1.65 23.3573 1.47616 23.6667 1.16673C23.9762 0.857291 24.15 0.437607 24.15 0L25.85 0C25.85 0.437607 26.0238 0.857291 26.3333 1.16673C26.6427 1.47616 27.0624 1.65 27.5 1.65C27.9376 1.65 28.3573 1.47616 28.6667 1.16673C28.9762 0.857291 29.15 0.437607 29.15 0H30V0.921429C29.5624 0.921429 29.1427 1.09527 28.8333 1.4047C28.5238 1.71414 28.35 2.13382 28.35 2.57143C28.35 3.00904 28.5238 3.42872 28.8333 3.73815C29.1427 4.04759 29.5624 4.22143 30 4.22143V6.06429C29.5624 6.06429 29.1427 6.23812 28.8333 6.54756C28.5238 6.85699 28.35 7.27668 28.35 7.71429C28.35 8.15189 28.5238 8.57158 28.8333 8.88101C29.1427 9.19045 29.5624 9.36429 30 9.36429V11.2071C29.5624 11.2071 29.1427 11.381 28.8333 11.6904C28.5238 11.9999 28.35 12.4195 28.35 12.8571C28.35 13.2947 28.5238 13.7144 28.8333 14.0239C29.1427 14.3333 29.5624 14.5071 30 14.5071V16.35C29.5624 16.35 29.1427 16.5238 28.8333 16.8333C28.5238 17.1427 28.35 17.5624 28.35 18C28.35 18.4376 28.5238 18.8573 28.8333 19.1667C29.1427 19.4762 29.5624 19.65 30 19.65V21.4929C29.5624 21.4929 29.1427 21.6667 28.8333 21.9761C28.5238 22.2856 28.35 22.7052 28.35 23.1429C28.35 23.5805 28.5238 24.0001 28.8333 24.3096C29.1427 24.619 29.5624 24.7929 30 24.7929V26.6357C29.5624 26.6357 29.1427 26.8096 28.8333 27.119C28.5238 27.4284 28.35 27.8481 28.35 28.2857C28.35 28.7233 28.5238 29.143 28.8333 29.4524C29.1427 29.7619 29.5624 29.9357 30 29.9357V31.7786C29.5624 31.7786 29.1427 31.9524 28.8333 32.2618C28.5238 32.5713 28.35 32.991 28.35 33.4286C28.35 33.8662 28.5238 34.2859 28.8333 34.5953C29.1427 34.9047 29.5624 35.0786 30 35.0786V36H29.15C29.15 35.5624 28.9762 35.1427 28.6667 34.8333C28.3573 34.5238 27.9376 34.35 27.5 34.35C27.0624 34.35 26.6427 34.5238 26.3333 34.8333C26.0238 35.1427 25.85 35.5624 25.85 36H24.15C24.15 35.5624 23.9762 35.1427 23.6667 34.8333C23.3573 34.5238 22.9376 34.35 22.5 34.35C22.0624 34.35 21.6427 34.5238 21.3333 34.8333C21.0238 35.1427 20.85 35.5624 20.85 36H19.15C19.15 35.5624 18.9762 35.1427 18.6667 34.8333C18.3573 34.5238 17.9376 34.35 17.5 34.35C17.0624 34.35 16.6427 34.5238 16.3333 34.8333C16.0238 35.1427 15.85 35.5624 15.85 36H14.15C14.15 35.5624 13.9762 35.1427 13.6667 34.8333C13.3573 34.5238 12.9376 34.35 12.5 34.35C12.0624 34.35 11.6427 34.5238 11.3333 34.8333C11.0238 35.1427 10.85 35.5624 10.85 36H9.15C9.15 35.5624 8.97616 35.1427 8.66673 34.8333C8.35729 34.5238 7.93761 34.35 7.5 34.35C7.06239 34.35 6.64271 34.5238 6.33327 34.8333C6.02384 35.1427 5.85 35.5624 5.85 36H4.15C4.15 35.5624 3.97616 35.1427 3.66673 34.8333C3.35729 34.5238 2.93761 34.35 2.5 34.35C2.06239 34.35 1.64271 34.5238 1.33327 34.8333C1.02384 35.1427 0.85 35.5624 0.85 36H0V35.0786C0.437607 35.0786 0.857291 34.9047 1.16673 34.5953C1.47616 34.2859 1.65 33.8662 1.65 33.4286C1.65 32.991 1.47616 32.5713 1.16673 32.2618C0.857291 31.9524 0.437607 31.7786 0 31.7786L0 29.9357C0.437607 29.9357 0.857291 29.7619 1.16673 29.4524C1.47616 29.143 1.65 28.7233 1.65 28.2857C1.65 27.8481 1.47616 27.4284 1.16673 27.119C0.857291 26.8096 0.437607 26.6357 0 26.6357L0 24.7929C0.437607 24.7929 0.857291 24.619 1.16673 24.3096C1.47616 24.0001 1.65 23.5805 1.65 23.1429C1.65 22.7052 1.47616 22.2856 1.16673 21.9761C0.857291 21.6667 0.437607 21.4929 0 21.4929L0 19.65C0.437607 19.65 0.857291 19.4762 1.16673 19.1667C1.47616 18.8573 1.65 18.4376 1.65 18C1.65 17.5624 1.47616 17.1427 1.16673 16.8333C0.857291 16.5238 0.437607 16.35 0 16.35L0 14.5071C0.437607 14.5071 0.857291 14.3333 1.16673 14.0239C1.47616 13.7144 1.65 13.2947 1.65 12.8571C1.65 12.4195 1.47616 11.9999 1.16673 11.6904C0.857291 11.381 0.437607 11.2071 0 11.2071L0 9.36429C0.437607 9.36429 0.857291 9.19045 1.16673 8.88101C1.47616 8.57158 1.65 8.15189 1.65 7.71429C1.65 7.27668 1.47616 6.85699 1.16673 6.54756C0.857291 6.23812 0.437607 6.06429 0 6.06429V4.22143C0.437607 4.22143 0.857291 4.04759 1.16673 3.73815C1.47616 3.42872 1.65 3.00904 1.65 2.57143C1.65 2.13382 1.47616 1.71414 1.16673 1.4047C0.857291 1.09527 0.437607 0.921429 0 0.921429V0Z"/>
+      <rect style="fill:none;stroke:var(--hp-accent-on-ink)" opacity=".7" x="4.03125" y="4.03125" width="21.9375" height="27.9375" stroke-width=".5625"/>
+      <path style="fill:var(--hp-accent-on-ink)" d="M17.1473 24.9795C16.5353 24.9795 16.0763 24.7245 15.7703 24.2145C15.4643 23.7045 15.4473 22.914 15.7193 21.843L17.6828 14.448C17.8698 13.785 17.8953 13.326 17.7593 13.071C17.6403 12.816 17.4618 12.6885 17.2238 12.6885C16.8498 12.6885 16.4248 12.9265 15.9488 13.4025C15.4898 13.8615 15.0053 14.499 14.4953 15.315C14.0023 16.114 13.5178 17.0235 13.0418 18.0435C12.5828 19.0465 12.1578 20.109 11.7668 21.231C11.3758 22.336 11.0613 23.4155 10.8233 24.4695C10.7723 24.6565 10.6533 24.75 10.4663 24.75H9.39528C9.15728 24.75 9.06378 24.6395 9.11478 24.4185L12.8378 8.43C12.9228 8.124 12.9228 7.9115 12.8378 7.7925C12.7698 7.6735 12.6168 7.6055 12.3788 7.5885L11.6138 7.512C11.3588 7.495 11.2483 7.3845 11.2823 7.1805C11.3163 7.0275 11.4353 6.934 11.6393 6.9C12.2513 6.798 12.7953 6.679 13.2713 6.543C13.7473 6.39 14.1298 6.1945 14.4188 5.9565C14.5548 5.8545 14.6823 5.8035 14.8013 5.8035C15.0053 5.8035 15.0818 5.931 15.0308 6.186L12.5318 17.0235C12.5148 17.1425 12.5403 17.2105 12.6083 17.2275C12.6763 17.2445 12.7358 17.202 12.7868 17.1C13.4668 15.706 14.1128 14.6095 14.7248 13.8105C15.3368 13.0115 15.9063 12.442 16.4333 12.102C16.9773 11.762 17.4703 11.592 17.9123 11.592C18.5413 11.592 19.0003 11.847 19.2893 12.357C19.5783 12.867 19.5783 13.649 19.2893 14.703L17.3513 22.098C17.2323 22.574 17.2238 22.931 17.3258 23.169C17.4278 23.407 17.6148 23.526 17.8868 23.526C18.2268 23.526 18.5583 23.305 18.8813 22.863C19.2043 22.404 19.5528 21.5455 19.9268 20.2875C19.9778 20.1005 20.0883 20.007 20.2583 20.007C20.3943 20.007 20.4708 20.058 20.4878 20.16C20.5218 20.262 20.5218 20.381 20.4878 20.517C20.1648 21.673 19.8163 22.5825 19.4423 23.2455C19.0683 23.8915 18.6858 24.342 18.2948 24.597C17.9208 24.852 17.5383 24.9795 17.1473 24.9795Z"/>
+      <path style="fill:var(--hp-accent-on-ink)" d="M22.146 10.25V9.8315H23.028V7.478H22.992L22.263 8.2565L21.9525 7.9775L22.7535 7.109H23.532V9.8315H24.2925V10.25H22.146Z"/>
+    </symbol>
+    <symbol id="i-code" viewBox="0 0 24 24"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
+    <symbol id="i-external" viewBox="0 0 24 24"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></symbol>
+    <symbol id="i-coffee" viewBox="0 0 24 24"><path d="M10 2v2"/><path d="M14 2v2"/><path d="M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1"/><path d="M6 2v2"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+    <symbol id="i-pen" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.4 3.6a2.1 2.1 0 0 1 3 3L7.4 18.6a2 2 0 0 1-.9.5l-2.9.8.8-2.9a2 2 0 0 1 .5-.8z"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.7 9a1 1 0 0 1-.6 0C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.2-2.7a1.2 1.2 0 0 1 1.6 0C14.5 3.8 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-window" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 8h20"/><path d="M6 4v4"/><path d="M10 4v4"/></symbol>
+    <symbol id="i-file-check" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="m9 15 2 2 4-4"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9l-.8-1.2A2 2 0 0 0 7.9 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></symbol>
+    <symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></symbol>
+    <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1z"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></symbol>
+    <symbol id="i-camera" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></symbol>
+  </svg>
+
   <a class="skip" href="#main">Skip to content</a>
-  <div class="risk-ticker"><div class="shell"><span class="risk-label">Read this first</span><p>Web-UI automation can violate platform terms. Account loss is possible.</p><a href="#caveats">Understand the risk <span>↘</span></a></div></div>
-  <header class="nav shell"><a href="/" class="brand"><span class="brand-mark">R</span><span><b>Relay</b><small>Publisher</small></span></a><nav><a href="#caveats">Caveats</a><a href="#system">How it works</a><a href="#scope">Scope</a><a href="#faq">FAQ</a></nav><div class="nav-actions"><a href="https://github.com/tanzir71/scheduler">Source</a><a href="/demo/" class="button compact">Mock demo <span>↗</span></a></div></header>
+  <div class="airmail airmail--top" aria-hidden="true"></div>
+
+  <header class="nav" id="top">
+    <div class="wrap nav__inner">
+      <a class="lockup" href="#top" aria-label="Handpost, back to top">
+        <svg class="lockup__mark" width="25" height="30" aria-hidden="true" focusable="false"><use href="#stamp"/></svg>
+        <span class="lockup__name">Handpost</span>
+      </a>
+      <nav class="nav__links" aria-label="Sections">
+        <a href="#how">How it works</a>
+        <a href="#automation">Automation</a>
+        <a href="#platforms">Platforms</a>
+        <a href="#caveats">Honest caveats</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+      <div class="nav__actions">
+        <a class="btn btn--ghost nav__github" href="https://github.com/tanzir71/handpost">
+          <svg class="icon" aria-hidden="true"><use href="#i-code"/></svg>GitHub
+        </a>
+        <a class="btn btn--primary" href="#download">
+          <svg class="icon" aria-hidden="true"><use href="#i-download"/></svg>Download
+        </a>
+        <details class="menu">
+          <summary class="btn btn--ghost menu__toggle" aria-label="Menu">
+            <svg class="icon" aria-hidden="true"><use href="#i-menu"/></svg>
+          </summary>
+          <nav class="menu__panel" aria-label="Sections (menu)">
+            <a href="#how">How it works</a>
+            <a href="#automation">Automation</a>
+            <a href="#platforms">Platforms</a>
+            <a href="#caveats">Honest caveats</a>
+            <a href="#faq">FAQ</a>
+            <a class="menu__github" href="https://github.com/tanzir71/handpost">
+              <svg class="icon" aria-hidden="true"><use href="#i-code"/></svg>GitHub
+            </a>
+          </nav>
+        </details>
+      </div>
+    </div>
+  </header>
 
   <main id="main">
-    <section id="caveats" class="caveats shell">
-      <div class="caveat-head"><div><p class="eyebrow danger">Before the product pitch</p><h1>Relay is powerful.<br>It is not risk-free.</h1></div><p>Relay publishes by driving real platform web interfaces. That avoids API rent and approval gates—but trades them for policy risk and ongoing maintenance. Install only if that trade makes sense for you.</p></div>
-      <div class="risk-grid">
-        <article><span class="risk-num">01 / TERMS</span><h2>Your account can be challenged—or banned.</h2><p>Automated posting through web UIs violates most platforms’ terms, even at human volume. Circuit breakers, pacing, and caps reduce risk. They cannot remove it.</p><a href="https://github.com/tanzir71/scheduler/blob/master/docs/LIVE_TEST.md">Read the live-testing policy ↗</a></article>
-        <article><span class="risk-num">02 / DRIFT</span><h2>Selectors will break. Budget for repairs.</h2><p>Platform interfaces change. Fixtures and per-platform selector modules localize each repair, but expect roughly one adapter repair per month.</p><a href="https://github.com/tanzir71/scheduler/tree/master/src/main/adapters">Inspect the adapters ↗</a></article>
-        <article><span class="risk-num">03 / FALLBACK</span><h2>Instagram and TikTok remain fragile.</h2><p>When reliable automation is not possible, Relay prepares the content, opens the real composer, and hands control back to you. Manual fallback is a feature, not a hidden failure.</p><a href="#scope">See platform scope ↓</a></article>
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="wrap hero__copy">
+        <p class="hero__pill"><span class="dot" aria-hidden="true"></span>Free · open source · runs on your computer</p>
+        <h1 id="hero-title" class="hero__title">Your posts, delivered <em>by&nbsp;hand.</em></h1>
+        <p class="hero__lead">Handpost is a local-first desktop scheduler. It publishes through your own logged-in Chrome — and takes new posts from Claude, Codex or any script as plain files dropped in a folder.</p>
+        <div class="hero__actions" id="download">
+          <a class="btn btn--primary btn--lg" href="https://github.com/tanzir71/handpost">
+            <svg class="icon" aria-hidden="true"><use href="#i-code"/></svg>Read the source
+          </a>
+          <span class="btn btn--secondary btn--lg is-soon" role="link" aria-disabled="true">
+            <svg class="icon" aria-hidden="true"><use href="#i-download"/></svg>Download for Windows<span class="soon">Coming soon</span>
+          </span>
+        </div>
+        <p class="hero__meta">Also for macOS and Linux · no account · no cloud · no telemetry</p>
       </div>
-      <div class="risk-accept"><span class="shield">!</span><p><b>No live-posting demo exists.</b> The public walkthrough uses invented drafts and a fake publish timeline. It never opens a platform or posts anything.</p><a href="/demo/">Open safe mock demo <span>→</span></a></div>
+      <div class="wrap">
+        <div class="desk">
+          <div class="shot" tabindex="0" role="group" aria-label="Screenshot of the Handpost Inbox (scrolls sideways on small screens)">
+            <picture>
+              <source srcset="./assets/inbox-dark.png" media="(prefers-color-scheme: dark)">
+              <img src="./assets/inbox.png" width="1440" height="900" loading="eager" decoding="async"
+                alt="The Handpost Inbox screen. A table lists six posts that arrived as files from Claude and Codex, each with its source, text, platforms, time and status: held for review, scheduled, published, rejected or duplicate. The selected post's receipt panel shows why it is held, the checks it passed and the platforms it will publish to, with Approve and schedule, Edit and Reject buttons.">
+            </picture>
+          </div>
+          <svg class="desk__stamp" width="100" height="120" aria-hidden="true" focusable="false"><use href="#stamp"/></svg>
+        </div>
+      </div>
     </section>
 
-    <section class="hero shell">
-      <div class="hero-copy reveal"><p class="eyebrow"><span></span> Local-first desktop scheduler</p><h2>Schedule everywhere.<br>From your desktop.<br><em>Without renting API access.</em></h2><p class="lead">Compose once, adapt per platform, and let your own logged-in Chrome profiles publish at human pace. Drafts, media, sessions, logs, and proof stay on your machine.</p><div class="hero-actions"><a class="button primary" href="/demo/">Walk through the queue <span>→</span></a><a class="button" href="https://github.com/tanzir71/scheduler#run">Run from source</a></div><div class="hero-facts"><span><i></i>No account</span><span><i></i>No cloud</span><span><i></i>No telemetry</span></div></div>
-      <div class="app-window reveal delay"><div class="window-top"><span class="dots"><i></i><i></i><i></i></span><span>Relay Publisher</span><span class="window-state"><i></i> Scheduler active</span></div><div class="app-body"><aside><div class="mini-brand"><b>R</b><span>Relay<small>local scheduler</small></span></div><nav><span class="active">⊞ <b>Composer</b></span><span>▦ Calendar</span><span>◴ Queue <small>4</small></span><span>⌁ Accounts</span><span>↶ History</span><span>☷ Settings</span></nav><footer><i></i> Local-only<small>No telemetry · no cloud</small></footer></aside><div class="composer"><header><div><small>CREATE</small><h3>Compose once. Publish everywhere.</h3><p>Content stays on this device.</p></div><span><i></i> Scheduler active</span></header><div class="compose-grid"><div class="editor"><div class="platforms"><b>in</b><b>𝕏</b><b>◎</b><b>◉</b><small>4 targets</small></div><div class="tabs"><span>Base content</span><span class="active">LinkedIn</span></div><p class="draft">Shipping the small improvements that make local software feel effortless.<br><br>Today: queue recovery, proof capture, and a calmer composer.</p><div class="char-count">142 / 3,000</div><div class="media-placeholder"><span>▧</span><p>release-notes.png<small>1200 × 675 · 284 KB</small></p><b>×</b></div><div class="schedule-row"><span>Publish at<b>Jul 14 · 9:30 AM</b></span><span>Timezone<b>Asia / Dhaka</b></span></div><footer><button>Save draft</button><button>Add to queue</button><button class="send">Schedule ↗</button></footer></div><div class="preview"><small>LIVE PREVIEW</small><article><header><i>R</i><span><b>Your account</b><small>@relay · scheduled</small></span><em>in</em></header><p>Shipping the small improvements that make local software feel effortless.</p><div class="fake-image"><span>RELAY / 07.26</span><b>Local software,<br>quietly reliable.</b></div><footer>♡ &nbsp; ◯ &nbsp; ↗</footer></article><div class="validation"><i>✓</i><span>Ready for 4 platforms<small>No blocking validation issues</small></span></div></div></div></div></div></div>
+    <div class="airmail airmail--8" aria-hidden="true"></div>
+
+    <section class="section" id="how" aria-labelledby="how-title">
+      <div class="wrap">
+        <header class="section__head">
+          <p class="eyebrow">How it works</p>
+          <h2 id="how-title" class="display-l">From draft to receipt, without renting an API.</h2>
+        </header>
+        <ol class="steps">
+          <li class="card step">
+            <span class="step__num">01</span>
+            <span class="step__icon"><svg class="icon" aria-hidden="true"><use href="#i-pen"/></svg></span>
+            <h3>Write it — or let Claude</h3>
+            <p>Compose in the app, or let a Claude scheduled task, Codex or any script drop a Markdown or JSON file into <code>~/Handpost/inbox</code>.</p>
+          </li>
+          <li class="card step">
+            <span class="step__num">02</span>
+            <span class="step__icon"><svg class="icon" aria-hidden="true"><use href="#i-shield"/></svg></span>
+            <h3>Handpost checks it</h3>
+            <p>Length, media and alt text are checked against every platform before anything opens. Then the post waits for your approval or takes the next free slot, paced and capped.</p>
+          </li>
+          <li class="card step">
+            <span class="step__num">03</span>
+            <span class="step__icon"><svg class="icon" aria-hidden="true"><use href="#i-window"/></svg></span>
+            <h3>Posted from your Chrome</h3>
+            <p>At its time, Handpost drives your own logged-in Chrome profile — one post at a time, at a human pace. You log in yourself; it never sees your password.</p>
+          </li>
+          <li class="card step">
+            <span class="step__num">04</span>
+            <span class="step__icon"><svg class="icon" aria-hidden="true"><use href="#i-file-check"/></svg></span>
+            <h3>You get a receipt</h3>
+            <p>Every post ends with a permalink and a proof screenshot — or an honest “needs you”, with the composer opened and your text copied. Writers read the same receipt.</p>
+          </li>
+        </ol>
+      </div>
     </section>
 
-    <section class="proof-strip"><div class="shell"><span>ONE DESKTOP APP</span><i></i><span>YOUR REAL CHROME PROFILES</span><i></i><span>ONE PUBLISH AT A TIME</span><i></i><span>LOCAL PROOF FOR EVERY ATTEMPT</span></div></section>
+    <section class="section automation" id="automation" aria-labelledby="automation-title">
+      <div class="wrap automation__grid">
+        <div class="automation__copy">
+          <p class="eyebrow">Automation inbox</p>
+          <h2 id="automation-title" class="display-l">Claude writes. Your computer posts.</h2>
+          <p class="lead">Handpost never calls an AI, and no AI ever touches a platform. The only interface is a folder: a writer drops one file per post into <code>inbox/</code>, Handpost checks it, schedules it and publishes it from your Chrome, then leaves a receipt the next run can read.</p>
+          <ul class="ticks">
+            <li><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><span><b>Plain files.</b> Markdown with front matter, or JSON. No API, no server, no tokens to leak.</span></li>
+            <li><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><span><b>Atomic.</b> Write to <code>.tmp</code>, rename into place — half-written files are never read.</span></li>
+            <li><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><span><b>Idempotent.</b> Every post carries an id. The same file twice is a duplicate, never a double post.</span></li>
+            <li><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><span><b>Receipts and status.</b> <code>receipts/&lt;id&gt;.json</code> and <code>handpost.status.json</code> tell the writer what happened and which slots are free.</span></li>
+            <li><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><span><b>Same guardrails.</b> Inbox posts get the validation, pacing, caps and circuit breaker that hand-written posts get. Auto-schedule starts off.</span></li>
+          </ul>
+          <div class="automation__links">
+            <a class="btn btn--on-inverse" href="https://github.com/tanzir71/handpost/blob/master/docs/INBOX_PROTOCOL.md">Read the inbox protocol<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+            <a class="text-link" href="https://github.com/tanzir71/handpost/blob/master/docs/AUTOMATION.md">Set up a Claude task</a>
+            <a class="text-link" href="./schema/handpost-post.v1.schema.json">JSON Schema</a>
+          </div>
+        </div>
+        <div class="automation__cards">
+          <figure class="code-card">
+            <figcaption class="code-card__bar">
+              <svg class="icon" aria-hidden="true"><use href="#i-file"/></svg>
+              <span>inbox/2026-11-20-weekly-tip.md</span>
+            </figcaption>
+            <pre tabindex="0" aria-label="Example post file"><code><span class="tk-rule">---</span>
+<span class="tk-key">handpost:</span> 1
+<span class="tk-key">id:</span> weekly-tips-20261120-folder-scheduling
+<span class="tk-key">platforms:</span> [x, linkedin, bluesky]
+<span class="tk-key">when:</span> <span class="tk-str">"2026-11-20T09:30:00+06:00"</span>
+<span class="tk-key">source:</span> claude:weekly-tips
+<span class="tk-key">overrides:</span>
+  <span class="tk-key">x:</span>
+    <span class="tk-key">text:</span> |
+      Tip #47 — schedule posts from a folder.
+      Drop a .md file in your Handpost inbox and it
+      lands in the queue, paced like a human.
+  <span class="tk-key">linkedin:</span>
+    <span class="tk-key">first_comment:</span> <span class="tk-str">"Source and downloads: github.com/tanzir71/handpost"</span>
+<span class="tk-key">labels:</span> [weekly-tip]
+<span class="tk-rule">---</span>
+Tip #47 — Schedule posts from a folder.
 
-    <section id="system" class="section shell"><div class="section-head"><div><p class="eyebrow">The system</p><h2>A scheduler built around<br>the fragile part.</h2></div><p>Relay assumes publishing will sometimes fail. Every step is paced, reported, captured, and recoverable—without sending your content to a service in the middle.</p></div>
-      <div class="flow-grid"><article><span>01</span><div class="flow-icon compose-icon"><i></i><i></i><i></i></div><h3>Compose locally</h3><p>One base draft, per-platform overrides, first comments, alt text, threads, and live capability checks.</p></article><article><span>02</span><div class="flow-icon queue-icon"><i></i><i></i><i></i></div><h3>Queue deliberately</h3><p>Exact times or weekly slots, global concurrency one, same-platform cooldowns, jitter, and daily caps.</p></article><article><span>03</span><div class="flow-icon browser-icon"><div>Chrome</div><b>headed profile</b></div><h3>Publish visibly</h3><p>You log in yourself. Relay drives a persistent real-Chrome profile and never exports cookies or credentials.</p></article><article><span>04</span><div class="flow-icon proof-icon"><i>✓</i><small>permalink<br>proof.png<br>step log</small></div><h3>Prove or hand back</h3><p>Store the published URL and screenshot—or freeze the platform and open the composer for manual completion.</p></article></div>
+Drop a markdown file in your Handpost inbox and it lands in
+the queue, paced like a human. Every post ends with a
+receipt you can check.</code></pre>
+          </figure>
+          <aside class="receipt" aria-label="Example receipt">
+            <div class="airmail airmail--receipt" aria-hidden="true"></div>
+            <div class="receipt__body">
+              <div class="receipt__head">
+                <div>
+                  <p class="eyebrow">Receipt</p>
+                  <p class="receipt__id">weekly-tips-20261120-folder-scheduling</p>
+                </div>
+                <span class="pill pill--warn">Partial</span>
+              </div>
+              <ul class="receipt__targets">
+                <li><span class="badge badge--x" aria-hidden="true">𝕏</span><span class="receipt__name">X</span><span class="pill pill--ok">Published</span><span class="receipt__meta">x.com/…/status/1859…</span></li>
+                <li><span class="badge badge--linkedin" aria-hidden="true">in</span><span class="receipt__name">LinkedIn</span><span class="pill pill--ink">Scheduled</span><span class="receipt__meta">Nov 20 · 09:30 ±90 s</span></li>
+                <li><span class="badge badge--bluesky" aria-hidden="true">bs</span><span class="receipt__name">Bluesky</span><span class="pill pill--warn">Unverified</span><span class="receipt__meta">Submitted; not found on the profile within 45 s</span></li>
+              </ul>
+              <p class="receipt__file">receipts/weekly-tips-20261120-folder-scheduling.json</p>
+            </div>
+          </aside>
+        </div>
+      </div>
     </section>
 
-    <section class="privacy"><div class="shell privacy-grid"><div><p class="eyebrow">A hard local boundary</p><h2>Your content never becomes our content.</h2><p>Relay has no backend to receive your drafts. SQLite, attached media, Playwright profiles, failure captures, and publish proof remain in the desktop app’s data directory.</p><a class="text-button" href="https://github.com/tanzir71/scheduler/blob/master/docs/ARCHITECTURE.md">Read the architecture <span>↗</span></a></div><div class="boundary"><div class="boundary-label">YOUR COMPUTER</div><div class="boundary-items"><article><span>01</span><b>relay.db</b><small>drafts · queue · history</small></article><article><span>02</span><b>media/</b><small>images · video · alt text</small></article><article><span>03</span><b>profiles/</b><small>sessions · never exported</small></article><article><span>04</span><b>proof/</b><small>screenshots · step logs</small></article></div><div class="outbound"><i></i><span>Outbound only: visible Chrome → platform</span></div></div></div></section>
+    <section class="section" id="platforms" aria-labelledby="platforms-title">
+      <div class="wrap">
+        <header class="section__head section__head--split">
+          <div>
+            <p class="eyebrow">Platforms</p>
+            <h2 id="platforms-title" class="display-l">Nine platforms. Honest labels.</h2>
+          </div>
+          <p class="section__note">Contract tests replay saved copies of each composer on every change: they prove the machinery, not the platform. Only a live post from your own account proves a platform works today — and nothing on this page claims one. Rehearse mode fills the real composer and stops before <em>Post</em>, so you can check first.</p>
+        </header>
+        <div class="table-card">
+          <table class="platforms">
+            <caption class="sr-only">Supported platforms, what Handpost posts to each, how confident the automation is, and what happens when it can't finish</caption>
+            <thead>
+              <tr><th scope="col">Platform</th><th scope="col">What it posts</th><th scope="col">Confidence</th><th scope="col">When automation can't</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row"><span class="badge badge--x" aria-hidden="true">𝕏</span>X</th>
+                <td data-label="Posts">Text, up to four images or one video, threads</td>
+                <td data-label="Confidence"><span class="pill pill--ink">Contract-tested</span></td>
+                <td data-label="Fallback">Opens the composer with your text copied</td>
+              </tr>
+              <tr>
+                <th scope="row"><span class="badge badge--linkedin" aria-hidden="true">in</span>LinkedIn</th>
+                <td data-label="Posts">Text, images or video, first comment</td>
+                <td data-label="Confidence"><span class="pill pill--ink">Contract-tested</span></td>
+                <td data-label="Fallback">Opens the composer with your text copied</td>
+              </tr>
+              <tr>
+                <th scope="row"><span class="badge badge--bluesky" aria-hidden="true">bs</span>Bluesky</th>
+                <td data-label="Posts">Text, up to four images with alt text</td>
+                <td data-label="Confidence"><span class="pill pill--ink">Contract-tested</span></td>
+                <td data-label="Fallback">Opens the composer with your text copied</td>
+              </tr>
+              <tr>
+                <th scope="row"><span class="badge badge--threads" aria-hidden="true">@</span>Threads</th>
+                <td data-label="Posts">Text, images or video</td>
+                <td data-label="Confidence"><span class="pill pill--ink">Contract-tested</span></td>
+                <td data-label="Fallback">Opens the composer with your text copied</td>
+              </tr>
+              <tr>
+                <th scope="row"><span class="badge badge--facebook" aria-hidden="true">f</span>Facebook Page</th>
+                <td data-label="Posts">Text, images or video, to a Page you manage</td>
+                <td data-label="Confidence"><span class="pill pill--ink">Contract-tested</span></td>
+                <td data-label="Fallback">Opens the Page composer with your text copied</td>
+              </tr>
+              <tr>
+                <th scope="row"><span class="badge badge--youtube" aria-hidden="true">yt</span>YouTube Shorts</th>
+                <td data-label="Posts">One vertical video, up to 60 s</td>
+                <td data-label="Confidence"><span class="pill pill--neutral">Multi-step</span></td>
+                <td data-label="Fallback">Waits out processing, then hands the upload to you if it stalls</td>
+              </tr>
+              <tr>
+                <th scope="row"><span class="badge badge--pinterest" aria-hidden="true">p</span>Pinterest</th>
+                <td data-label="Posts">One image or video pin</td>
+                <td data-label="Confidence"><span class="pill pill--neutral">Multi-step</span></td>
+                <td data-label="Fallback">Opens the pin builder with your text copied</td>
+              </tr>
+              <tr>
+                <th scope="row"><span class="badge badge--instagram" aria-hidden="true">ig</span>Instagram</th>
+                <td data-label="Posts">Feed image or carousel; media required</td>
+                <td data-label="Confidence"><span class="pill pill--warn">Fragile</span></td>
+                <td data-label="Fallback">Slow, conservative pacing; expect to finish some posts by hand</td>
+              </tr>
+              <tr>
+                <th scope="row"><span class="badge badge--tiktok" aria-hidden="true">tt</span>TikTok</th>
+                <td data-label="Posts">One video, up to 10 minutes</td>
+                <td data-label="Confidence"><span class="pill pill--warn">Fragile</span></td>
+                <td data-label="Fallback">Expect to finish some posts by hand in the open composer</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <dl class="legend">
+          <div><dt><span class="pill pill--ink">Contract-tested</span></dt><dd>Publish and verify steps run against saved copies of the composer in every check.</dd></div>
+          <div><dt><span class="pill pill--neutral">Multi-step</span></dt><dd>Upload wizards with processing waits; slower, with more places to stop.</dd></div>
+          <div><dt><span class="pill pill--warn">Fragile</span></dt><dd>The platform resists automation. Plan on the manual hand-off.</dd></div>
+        </dl>
+      </div>
+    </section>
 
-    <section id="scope" class="section shell"><div class="section-head"><div><p class="eyebrow">Platform reality</p><h2>Confidence, not checkboxes.</h2></div><p>Contract tests verify saved interfaces. Only owner-run live smoke tests can verify a real platform, and they intentionally create public posts.</p></div><div class="platform-table"><div class="table-head"><span>Platform</span><span>Automation path</span><span>Risk posture</span><span>Fallback</span></div><article><span><b>𝕏</b>X / Twitter</span><span>Text · media · threads</span><span class="pill contract">Contract tested</span><span>Open composer + copy</span></article><article><span><b>in</b>LinkedIn</span><span>Text · image · first comment</span><span class="pill contract">Contract tested</span><span>Open composer + copy</span></article><article><span><b>◉</b>Bluesky / Threads</span><span>Text · images</span><span class="pill contract">Contract tested</span><span>Open composer + copy</span></article><article class="caution"><span><b>◎</b>Instagram</span><span>Feed image · carousel</span><span class="pill fragile">Fragile · conservative pace</span><span>Manual handoff preferred</span></article><article class="caution"><span><b>♪</b>TikTok / Shorts</span><span>Video wizard flows</span><span class="pill fragile">Fragile · processing waits</span><span>Manual handoff preferred</span></article></div><p class="owner-gate"><span>OWNER GATE</span> Real Chrome and live-platform checks remain manual by design. No website, CI run, or mock can claim a successful live post.</p></section>
+    <section class="section local" aria-labelledby="local-title">
+      <div class="wrap local__grid">
+        <div class="local__copy">
+          <p class="eyebrow">Local-first</p>
+          <h2 id="local-title" class="display-l">Nothing leaves your computer.</h2>
+          <p class="lead">There is no Handpost server to send your drafts to. The database, your media, the browser sessions and every proof screenshot live in folders on your disk — back them up, export them, or delete them. The app itself makes no network calls: no telemetry, no update pings, no fonts from a CDN.</p>
+          <a class="text-link" href="https://github.com/tanzir71/handpost/blob/master/docs/ARCHITECTURE.md">Read the architecture</a>
+        </div>
+        <div class="folder">
+          <p class="folder__label">Your computer</p>
+          <ul class="folder__list">
+            <li><svg class="icon" aria-hidden="true"><use href="#i-database"/></svg><span class="folder__name">handpost.db</span><span class="folder__desc">drafts · queue · history</span></li>
+            <li><svg class="icon" aria-hidden="true"><use href="#i-image"/></svg><span class="folder__name">media/</span><span class="folder__desc">images · video · alt text</span></li>
+            <li><svg class="icon" aria-hidden="true"><use href="#i-folder"/></svg><span class="folder__name">profiles/ <svg class="icon icon--lock" role="img" aria-label="locked"><use href="#i-lock"/></svg></span><span class="folder__desc">Chrome sessions · never exported</span></li>
+            <li><svg class="icon" aria-hidden="true"><use href="#i-camera"/></svg><span class="folder__name">proof/</span><span class="folder__desc">screenshots · step logs</span></li>
+            <li><svg class="icon" aria-hidden="true"><use href="#i-inbox"/></svg><span class="folder__name">inbox/</span><span class="folder__desc">files from Claude, Codex, scripts</span></li>
+          </ul>
+          <p class="outbound"><span class="dot" aria-hidden="true"></span>Outbound only: your Chrome → the platform</p>
+        </div>
+      </div>
+    </section>
 
-    <section class="section evidence"><div class="shell evidence-card"><div><p class="eyebrow">What is automated today</p><h2>Test the machinery.<br>Never fake the post.</h2><p>Saved DOM fixtures exercise every adapter; MockSocial exercises login, scheduling, publication, verification, proof, and database state without contacting a real network.</p></div><div class="test-terminal"><div><i></i><i></i><i></i><span>relay — verification</span></div><code><span>$ npm run check</span>
-✓ 46 unit tests
-✓ 22 browser contracts
-✓ 3-post MockSocial pipeline
-✓ fingerprint self-test
+    <section class="section caveats" id="caveats" aria-labelledby="caveats-title">
+      <div class="wrap">
+        <header class="section__head section__head--split">
+          <div>
+            <p class="eyebrow">Honest caveats</p>
+            <h2 id="caveats-title" class="display-l">Powerful. Not risk-free.</h2>
+          </div>
+          <p class="section__note">Handpost posts by driving the same web pages you use by hand. That avoids API fees and approval queues — and trades them for policy risk and upkeep. Install it only if that trade makes sense for you.</p>
+        </header>
+        <div class="caveats__grid">
+          <article class="card caveat">
+            <p class="caveat__num">01 / Terms</p>
+            <h3>Your account can be challenged&nbsp;— or banned.</h3>
+            <p>Automated posting through web interfaces violates most platforms’ terms, even at human volume. A challenge, an action block or account loss is possible. Pacing, daily caps and the circuit breaker reduce the risk; they cannot remove it.</p>
+            <a class="text-link" href="https://github.com/tanzir71/handpost/blob/master/docs/LIVE_TEST.md">Read the live-test policy</a>
+          </article>
+          <article class="card caveat">
+            <p class="caveat__num">02 / Drift</p>
+            <h3>Platforms change. Selectors break.</h3>
+            <p>When a composer changes, the adapter fails closed, saves evidence and hands the post back to you. Each repair stays inside one platform’s folder, but budget for roughly one adapter repair per month.</p>
+            <a class="text-link" href="https://github.com/tanzir71/handpost/tree/master/src/main/adapters">Inspect the adapters</a>
+          </article>
+          <article class="card caveat">
+            <p class="caveat__num">03 / Fallback</p>
+            <h3>Instagram and TikTok remain fragile.</h3>
+            <p>When reliable automation isn’t possible, Handpost opens the real composer, copies your text and hands control back to you. Manual fallback is a feature, not a hidden failure.</p>
+            <a class="text-link" href="#platforms">See the platform labels</a>
+          </article>
+        </div>
+        <div class="caveats__notes">
+          <p><b>Your inbox is a key.</b> Anything that can write to the inbox folder can publish to your connected accounts. Auto-schedule starts off, so every file waits for your approval until you trust the writer.</p>
+          <p><b>No live-posting demo exists.</b> The <a href="./demo/">mock demo</a> uses invented posts and a fake timeline. It never opens a platform or posts anything.</p>
+        </div>
+      </div>
+    </section>
 
-<b>Real-platform smoke: owner only</b></code></div></div></section>
+    <section class="section" id="faq" aria-labelledby="faq-title">
+      <div class="wrap">
+        <header class="section__head">
+          <p class="eyebrow">FAQ</p>
+          <h2 id="faq-title" class="display-l">Straight answers.</h2>
+        </header>
+        <div class="faq">
+          <details class="faq__item" open>
+            <summary>Will my account get banned?</summary>
+            <p>It’s possible. One post at a time, human pacing, daily caps, cooldowns, a circuit breaker that freezes a platform on any challenge, and manual fallback all lower the odds and the damage. None of them make automation approved by the platform.</p>
+          </details>
+          <details class="faq__item" open>
+            <summary>Does Handpost see my password or 2FA codes?</summary>
+            <p>No. Connecting an account opens a visible Chrome window and you log in on the platform’s own page. Handpost keeps that browser profile on your disk and never copies cookies into its database or logs.</p>
+          </details>
+          <details class="faq__item" open>
+            <summary>Does Claude post for me?</summary>
+            <p>No. Claude, Codex or a script only writes a file. Handpost validates it, paces it and publishes it — and with auto-schedule off, nothing goes out until you press Approve.</p>
+          </details>
+          <details class="faq__item" open>
+            <summary>Why not use the official APIs?</summary>
+            <p>When the pricing, access and features work for you, official APIs are the safer path. Handpost is for the gap: one person, low volume, no per-channel subscription and no developer-app approvals.</p>
+          </details>
+          <details class="faq__item" open>
+            <summary>What happens when a platform changes its design?</summary>
+            <p>The adapter stops instead of guessing, saves a sanitized snapshot of the page and offers to finish the post by hand. The fix is usually a selector or two in one platform’s folder.</p>
+          </details>
+          <details class="faq__item" open>
+            <summary>What do I need to run it?</summary>
+            <p>Windows, macOS or Linux, and Google Chrome or Microsoft Edge. Installers arrive with the first release; until then it runs from source with Node.js 22 — see the README on GitHub.</p>
+          </details>
+        </div>
+      </div>
+    </section>
 
-    <section id="faq" class="section shell faq"><div><p class="eyebrow">Straight answers</p><h2>Before Relay touches a queue.</h2></div><div class="faq-list"><details><summary>Will my account get banned?<span>+</span></summary><p>It is possible. Relay’s global concurrency, human pacing, daily caps, cooldowns, detection circuit breaker, and manual fallback reduce the likelihood and blast radius. None of them can make prohibited automation safe or approved.</p></details><details><summary>Does Relay see my password or 2FA code?<span>+</span></summary><p>No. Connect opens a visible Chrome profile. You complete login and 2FA directly on the platform. Relay stores the profile directory locally; it never exports cookies to SQLite or logs.</p></details><details><summary>Why not use official APIs?<span>+</span></summary><p>Official APIs are the safer path when their pricing, access, and feature scope work for you. Relay exists for the gap: a personal, low-volume publisher that does not want per-channel SaaS rent or multiple developer-app approval flows.</p></details><details><summary>What happens when a platform changes its UI?<span>+</span></summary><p>The adapter fails closed, captures sanitized evidence, and offers manual completion. Per-platform selectors and saved fixtures keep the repair localized, but maintenance is expected.</p></details><details><summary>Does the demo post anything?<span>+</span></summary><p>Never. It is a browser-only simulation with invented content. The timeline, permalink, and proof thumbnail are fake and clearly labeled.</p></details></div></section>
-
-    <section class="closing"><div class="shell"><div><p class="eyebrow">Risk understood?</p><h2>Explore the workflow<br>without publishing a thing.</h2></div><a class="button light" href="/demo/">Open mock demo <span>→</span></a></div></section>
+    <section class="support" id="support" aria-labelledby="support-title">
+      <div class="wrap">
+        <div class="support__card">
+          <span class="support__icon" aria-hidden="true"><svg class="icon"><use href="#i-coffee"/></svg></span>
+          <div class="support__copy">
+            <p class="eyebrow">Tanzir Rahman is</p>
+            <h2 id="support-title" class="support__title"><a href="https://buymeacoffee.com/tanzir" target="_blank" rel="noopener">Fueling open-source code, local utilities, and late-night builds.</a></h2>
+            <p>Handpost is free. If it saves you a scheduler subscription, a coffee keeps the late-night builds going.</p>
+          </div>
+          <div class="support__cta">
+            <a class="btn btn--coffee btn--lg" href="https://buymeacoffee.com/tanzir" target="_blank" rel="noopener">
+              <svg class="icon" aria-hidden="true"><use href="#i-coffee"/></svg>Buy me a coffee
+            </a>
+            <span class="support__url">buymeacoffee.com/tanzir</span>
+          </div>
+        </div>
+      </div>
+    </section>
   </main>
-  <footer class="footer shell"><a href="/" class="brand"><span class="brand-mark">R</span><span><b>Relay</b><small>Publisher</small></span></a><p>Local-first publishing with the tradeoffs in plain sight.</p><div><a href="#caveats">Risk</a><a href="/demo/">Mock demo</a><a href="https://github.com/tanzir71/scheduler">Source</a><a href="/llms.txt">llms.txt</a></div></footer>
+
+  <div class="airmail airmail--8" aria-hidden="true"></div>
+  <footer class="footer">
+    <div class="wrap">
+      <div class="footer__top">
+        <div class="footer__brand">
+          <a class="lockup" href="#top" aria-label="Handpost, back to top">
+            <svg class="lockup__mark" width="25" height="30" aria-hidden="true" focusable="false"><use href="#stamp"/></svg>
+            <span class="lockup__name">Handpost</span>
+          </a>
+          <p class="footer__tagline">Your posts, delivered by hand.</p>
+        </div>
+        <nav class="footer__cols" aria-label="Footer">
+          <div>
+            <h2 class="footer__head">Product</h2>
+            <ul>
+              <li><a href="#download">Download <span class="soon soon--quiet">soon</span></a></li>
+              <li><a href="./demo/">Mock demo</a></li>
+              <li><a href="https://github.com/tanzir71/handpost/commits/master">Changelog</a></li>
+            </ul>
+          </div>
+          <div>
+            <h2 class="footer__head">Docs</h2>
+            <ul>
+              <li><a href="https://github.com/tanzir71/handpost/blob/master/docs/INBOX_PROTOCOL.md">Inbox protocol</a></li>
+              <li><a href="https://github.com/tanzir71/handpost/blob/master/docs/ARCHITECTURE.md">Architecture</a></li>
+              <li><a href="https://github.com/tanzir71/handpost/blob/master/docs/LIVE_TEST.md">Live test checklist</a></li>
+              <li><a href="./llms.txt">llms.txt</a></li>
+            </ul>
+          </div>
+          <div>
+            <h2 class="footer__head">Project</h2>
+            <ul>
+              <li><a href="https://github.com/tanzir71/handpost">GitHub</a></li>
+              <li><a href="https://github.com/tanzir71/handpost/issues">Report an issue</a></li>
+              <li><a class="footer__coffee" href="https://buymeacoffee.com/tanzir" target="_blank" rel="noopener">Buy me a coffee</a></li>
+            </ul>
+          </div>
+        </nav>
+      </div>
+      <div class="footer__bottom">
+        <p>© 2026 Tanzir Rahman · <a href="https://github.com/tanzir71/handpost">Open source on GitHub</a></p>
+        <p>Not affiliated with any platform named on this page.</p>
+      </div>
+    </div>
+  </footer>
 </body>
 </html>
