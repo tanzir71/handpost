@@ -2,94 +2,273 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://tanzir71.github.io/handpost/schema/handpost-post.v1.schema.json",
   "title": "Handpost inbox file — protocol v1",
-  "description": "One post, a batch of posts, or a cancel request dropped into the Handpost inbox. For Markdown files, validate the front matter object with `text` set to the body. Normative spec: docs/INBOX_PROTOCOL.md.",
-  "oneOf": [
-    { "allOf": [ { "$ref": "#/$defs/post" }, { "required": ["handpost"] } ] },
-    { "$ref": "#/$defs/batch" },
-    { "$ref": "#/$defs/cancel" }
+  "description": "One post, a batch of posts, or a cancel request dropped into the Handpost inbox. For Markdown files, validate the front matter object with `text` set to the body. Generated from src/shared/inbox-schema.ts (npm run schema). Normative spec: docs/INBOX_PROTOCOL.md.",
+  "anyOf": [
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/post"
+        },
+        {
+          "required": [
+            "handpost"
+          ]
+        }
+      ]
+    },
+    {
+      "$ref": "#/$defs/batch"
+    },
+    {
+      "$ref": "#/$defs/cancel"
+    }
   ],
   "$defs": {
-    "version": { "const": 1 },
-    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,79}$" },
-    "platform": { "enum": ["x", "linkedin", "bluesky", "threads", "facebook", "instagram", "tiktok", "youtube", "pinterest"] },
-    "when": {
+    "version": {
+      "type": "number",
+      "const": 1
+    },
+    "id": {
       "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,79}$"
+    },
+    "platform": {
+      "type": "string",
+      "enum": [
+        "x",
+        "linkedin",
+        "bluesky",
+        "threads",
+        "facebook",
+        "instagram",
+        "tiktok",
+        "youtube",
+        "pinterest"
+      ]
+    },
+    "when": {
       "anyOf": [
-        { "const": "now" },
-        { "const": "next-slot" },
-        { "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2}(\\.\\d{1,3})?)?(Z|[+-]\\d{2}:\\d{2})?$" }
+        {
+          "type": "string",
+          "const": "now"
+        },
+        {
+          "type": "string",
+          "const": "next-slot"
+        },
+        {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2}(\\.\\d{1,3})?)?(Z|[+-]\\d{2}:\\d{2})?$"
+        }
       ]
     },
     "media": {
       "type": "array",
-      "maxItems": 10,
       "items": {
         "type": "object",
-        "additionalProperties": false,
-        "required": ["path"],
         "properties": {
-          "path": { "type": "string", "minLength": 1, "maxLength": 1024 },
-          "alt": { "type": "string", "maxLength": 2000 }
-        }
-      }
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024
+          },
+          "alt": {
+            "type": "string",
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "maxItems": 10
     },
-    "optionValue": { "type": ["string", "boolean"] },
     "override": {
       "type": "object",
-      "additionalProperties": false,
       "properties": {
-        "text": { "type": "string", "maxLength": 100000 },
-        "thread": { "type": "array", "maxItems": 24, "items": { "type": "string", "minLength": 1, "maxLength": 100000 } },
-        "first_comment": { "type": "string", "maxLength": 10000 },
+        "text": {
+          "type": "string",
+          "maxLength": 100000
+        },
+        "thread": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100000
+          },
+          "maxItems": 24
+        },
+        "first_comment": {
+          "type": "string",
+          "maxLength": 10000
+        },
         "options": {
-          "type": "object",
-          "maxProperties": 20,
-          "propertyNames": { "enum": ["page_name", "cover_time", "title", "visibility", "made_for_kids", "destination_url", "board"] },
-          "additionalProperties": { "$ref": "#/$defs/optionValue" }
+          "$ref": "#/$defs/options"
         }
-      }
+      },
+      "additionalProperties": false
+    },
+    "options": {
+      "type": "object",
+      "properties": {
+        "page_name": {
+          "type": [
+            "string",
+            "boolean"
+          ]
+        },
+        "cover_time": {
+          "$ref": "#/$defs/options/properties/page_name"
+        },
+        "title": {
+          "$ref": "#/$defs/options/properties/page_name"
+        },
+        "visibility": {
+          "$ref": "#/$defs/options/properties/page_name"
+        },
+        "made_for_kids": {
+          "$ref": "#/$defs/options/properties/page_name"
+        },
+        "destination_url": {
+          "$ref": "#/$defs/options/properties/page_name"
+        },
+        "board": {
+          "$ref": "#/$defs/options/properties/page_name"
+        }
+      },
+      "additionalProperties": false
     },
     "post": {
       "type": "object",
-      "additionalProperties": false,
-      "required": ["id", "platforms", "text"],
       "properties": {
-        "handpost": { "$ref": "#/$defs/version" },
-        "id": { "$ref": "#/$defs/id" },
-        "action": { "const": "upsert" },
-        "platforms": { "type": "array", "minItems": 1, "maxItems": 9, "uniqueItems": true, "items": { "$ref": "#/$defs/platform" } },
-        "text": { "type": "string", "maxLength": 100000 },
-        "when": { "$ref": "#/$defs/when" },
-        "mode": { "enum": ["schedule", "review", "draft"] },
-        "media": { "$ref": "#/$defs/media" },
+        "handpost": {
+          "$ref": "#/$defs/version"
+        },
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "action": {
+          "type": "string",
+          "const": "upsert"
+        },
+        "platforms": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/platform"
+          },
+          "minItems": 1,
+          "maxItems": 9,
+          "uniqueItems": true
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 100000
+        },
+        "when": {
+          "$ref": "#/$defs/when"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "schedule",
+            "review",
+            "draft"
+          ]
+        },
+        "media": {
+          "$ref": "#/$defs/media"
+        },
         "overrides": {
           "type": "object",
-          "propertyNames": { "$ref": "#/$defs/platform" },
-          "additionalProperties": { "$ref": "#/$defs/override" }
+          "additionalProperties": {
+            "$ref": "#/$defs/override"
+          },
+          "propertyNames": {
+            "enum": [
+              "x",
+              "linkedin",
+              "bluesky",
+              "threads",
+              "facebook",
+              "instagram",
+              "tiktok",
+              "youtube",
+              "pinterest"
+            ]
+          }
         },
-        "labels": { "type": "array", "maxItems": 10, "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z0-9-]{1,32}$" } },
-        "source": { "type": "string", "maxLength": 120, "pattern": "^[a-z0-9-]+(:[A-Za-z0-9._-]+)?$" },
-        "on_conflict": { "enum": ["skip", "replace"] }
-      }
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]{1,32}$"
+          },
+          "maxItems": 10,
+          "uniqueItems": true
+        },
+        "source": {
+          "type": "string",
+          "maxLength": 120,
+          "pattern": "^[a-z0-9-]+(:[A-Za-z0-9._-]+)?$"
+        },
+        "on_conflict": {
+          "type": "string",
+          "enum": [
+            "skip",
+            "replace"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "platforms",
+        "text"
+      ],
+      "additionalProperties": false
     },
     "batch": {
       "type": "object",
-      "additionalProperties": false,
-      "required": ["handpost", "posts"],
       "properties": {
-        "handpost": { "$ref": "#/$defs/version" },
-        "posts": { "type": "array", "minItems": 1, "maxItems": 50, "items": { "$ref": "#/$defs/post" } }
-      }
+        "handpost": {
+          "$ref": "#/$defs/version"
+        },
+        "posts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/post"
+          },
+          "minItems": 1,
+          "maxItems": 50
+        }
+      },
+      "required": [
+        "handpost",
+        "posts"
+      ],
+      "additionalProperties": false
     },
     "cancel": {
       "type": "object",
-      "additionalProperties": false,
-      "required": ["handpost", "id", "action"],
       "properties": {
-        "handpost": { "$ref": "#/$defs/version" },
-        "id": { "$ref": "#/$defs/id" },
-        "action": { "const": "cancel" }
-      }
+        "handpost": {
+          "$ref": "#/$defs/version"
+        },
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "action": {
+          "type": "string",
+          "const": "cancel"
+        }
+      },
+      "required": [
+        "handpost",
+        "id",
+        "action"
+      ],
+      "additionalProperties": false
     }
   }
 }

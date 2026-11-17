@@ -28,7 +28,7 @@ Base text for every platform.
 - `when`: `next-slot` (default) · `now` · quoted ISO time with offset `"2026-11-20T09:30:00+06:00"`.
 - `mode: review` to require the owner's approval; `mode: draft` to only create a draft.
 - Media: put files in `./inbox/media/` first; reference as `media: [{ path: media/x.png, alt: "…" }]`. Never reference files outside this folder.
-- Replace a scheduled post: same `id` + `on_conflict: replace`. Cancel: `{"handpost":1,"id":"…","action":"cancel"}`.
+- Replace a scheduled post: same `id` + `on_conflict: replace` (without it, changed content under a used id is rejected as `duplicate_id`). Cancel: `{"handpost":1,"id":"…","action":"cancel"}`. A rejected id was never used — fix it and resend the same id.
 - JSON schema: `https://tanzir71.github.io/handpost/schema/handpost-post.v1.schema.json`. Full spec: `docs/INBOX_PROTOCOL.md` in github.com/tanzir71/handpost.
 
 ## Write atomically

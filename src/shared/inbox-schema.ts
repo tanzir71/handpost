@@ -106,6 +106,7 @@ const when = z.union([z.literal('now'), z.literal('next-slot'), z.string().regex
 const mediaItem = z
   .object({ path: z.string().min(1).max(1024), alt: z.string().max(2000).optional() })
   .strict();
+const mediaList = z.array(mediaItem).max(10);
 const optionValue = z.union([z.string(), z.boolean()]);
 const options = z
   .object(
@@ -129,17 +130,19 @@ function unique<T>(values: T[]): boolean {
 }
 
 /** Builds the protocol schemas. `platforms` defaults to the nine real ones; tests and the dev smoke add `mock`. */
+const version = z.literal(PROTOCOL_VERSION);
+
 export function inboxSchemas(platforms: readonly string[] = INBOX_PLATFORMS) {
   const platform = z.enum(platforms as [string, ...string[]]);
   const postShape = {
-    handpost: z.literal(PROTOCOL_VERSION).optional(),
+    handpost: version.optional(),
     id,
     action: z.literal('upsert').optional(),
     platforms: z.array(platform).min(1).max(9).refine(unique, 'platforms must be unique'),
     text: z.string().max(100_000),
     when: when.optional(),
     mode: z.enum(['schedule', 'review', 'draft']).optional(),
-    media: z.array(mediaItem).max(10).optional(),
+    media: mediaList.optional(),
     overrides: z.record(platform, override).optional(),
     labels: z
       .array(z.string().regex(LABEL_PATTERN))
@@ -150,16 +153,20 @@ export function inboxSchemas(platforms: readonly string[] = INBOX_PLATFORMS) {
     on_conflict: z.enum(['skip', 'replace']).optional(),
   };
   const post = z.object(postShape).strict();
-  const topPost = post.extend({ handpost: z.literal(PROTOCOL_VERSION) }).strict();
-  const batch = z
-    .object({ handpost: z.literal(PROTOCOL_VERSION), posts: z.array(post).min(1).max(MAX_BATCH_POSTS) })
-    .strict();
-  const cancel = z
-    .object({ handpost: z.literal(PROTOCOL_VERSION), id, action: z.literal('cancel') })
-    .strict();
-  return { platform, post, topPost, batch, cancel, file: z.union([topPost, batch, cancel]) };
+  const topPost = post.extend({ handpost: version }).strict();
+  const batch = z.object({ handpost: version, posts: z.array(post).min(1).max(MAX_BATCH_POSTS) }).strict();
+  const cancel = z.object({ handpost: version, id, action: z.literal('cancel') }).strict();
+  return {
+    platform,
+    post,
+    topPost,
+    batch,
+    cancel,
+    file: z.union([topPost, batch, cancel]),
+    /** Named parts, so the generated JSON Schema can reference them from `$defs`. */
+    parts: { version, id, platform, when, media: mediaList, override, options },
+  };
 }
-
 export const defaultInboxSchemas = inboxSchemas();
 export type InboxPost = z.infer<typeof defaultInboxSchemas.post>;
 export type InboxBatch = z.infer<typeof defaultInboxSchemas.batch>;

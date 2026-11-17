@@ -28,22 +28,22 @@ No status file → write anyway with `when: next-slot`, and say you could not co
 
 ## 2. Write the post file
 
-One file per post, Markdown with YAML front matter. The body is the base text.
+One file per post, Markdown with YAML front matter. The body is the base text. This is a complete, valid file — keep the shape and replace the values (the `#` comments say what goes where; comments are allowed).
 
 ```markdown
 ---
 handpost: 1
-id: <task>-<yyyymmdd>-<short-slug>
+id: weekly-tips-20261120-folder-scheduling   # <task>-<yyyymmdd>-<short-slug>
 platforms: [x, linkedin, bluesky]
 when: next-slot
-source: claude:<task-name>
+source: claude:weekly-tips                    # claude:<task-name>
 overrides:
   x:
     text: |
       Shorter version for X (≤ 280 chars).
   linkedin:
     first_comment: "Link or extra context goes here"
-labels: [<topic>]
+labels: [weekly-tip]                          # 1–10 lowercase topic tags
 ---
 Base text used for every platform without an override.
 ```
@@ -56,7 +56,8 @@ Rules:
 - Platform ids: `x`, `linkedin`, `bluesky`, `threads`, `facebook`, `instagram`, `tiktok`, `youtube`, `pinterest`. Facebook needs `overrides.facebook.options.page_name`. Instagram needs an image; TikTok and YouTube need a video.
 - X threads: `overrides.x.thread: ["second post", "third post"]`.
 - Media: save the file inside `inbox/media/` first, then reference it relative to the post file: `media: [{ path: media/chart.png, alt: "Bar chart of …" }]`. Always write alt text. Never reference files outside the Handpost folder.
-- Changing an already scheduled post: write the same `id` again with `on_conflict: replace`. Cancelling: write `{"handpost": 1, "id": "<id>", "action": "cancel"}` as `inbox/cancel-<id>.json`.
+- Changing an already scheduled post: write the same `id` again with `on_conflict: replace`. Without it, different content under a used id is rejected with `duplicate_id` and the post's receipt keeps describing the original post. Cancelling: write `{"handpost": 1, "id": "<id>", "action": "cancel"}` as `inbox/cancel-<id>.json`.
+- An id whose file was rejected (or never got its media) was not used: fix the problem and send the same id again.
 
 ## 3. Write it atomically
 
