@@ -3,6 +3,7 @@ import { basename, join } from 'node:path';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import type { HandpostDatabase } from '../db/database';
 import type { MediaRow } from '../../shared/rows';
+import { LEGACY_ARCHIVE_MANIFEST } from '../migrate-legacy';
 
 interface AttemptRow {
   [key: string]: unknown;
@@ -73,7 +74,7 @@ export function exportArchive(db: HandpostDatabase, output: string): void {
 
 export function importArchive(db: HandpostDatabase, input: string, dataDir: string): void {
   const zip = new AdmZip(input);
-  const manifest = zip.getEntry('handpost.json') ?? zip.getEntry('relay.json');
+  const manifest = zip.getEntry('handpost.json') ?? zip.getEntry(LEGACY_ARCHIVE_MANIFEST);
   if (!manifest) throw new Error('Invalid Handpost archive: handpost.json missing');
   const data = JSON.parse(manifest.getData().toString('utf8'));
   if (data.version !== 1) throw new Error(`Unsupported Handpost archive version: ${data.version}`);

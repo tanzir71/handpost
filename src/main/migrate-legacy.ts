@@ -13,6 +13,14 @@ import { join, sep } from 'node:path';
 
 export const LEGACY_DIR_NAMES = ['relay-scheduler'] as const;
 export const MIGRATION_MARKER = 'migrated-from-relay.json';
+/** Archives exported before the rename carry their manifest under this name; they still import. */
+export const LEGACY_ARCHIVE_MANIFEST = 'relay.json';
+/** Shown once after a successful import of the old app's data. */
+export const LEGACY_IMPORT_NOTICE = {
+  log: 'Imported data from Relay',
+  title: 'Handpost imported your Relay data',
+  body: 'Drafts, queue, history and browser sessions were copied over. The old Relay folder was left untouched.',
+} as const;
 const LEGACY_DB = 'relay.db';
 const NEW_DB = 'handpost.db';
 const COPIED_DIRS = ['profiles', 'media', 'artifacts'] as const;

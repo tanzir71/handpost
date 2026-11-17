@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { existsSync, mkdirSync } from 'node:fs';
 import { openDatabase, type HandpostDatabase } from './db/database';
 import { BrowserEngine, resolveBrowserChannel } from './engine/browser';
-import { migrateLegacyData } from './migrate-legacy';
+import { LEGACY_IMPORT_NOTICE, migrateLegacyData } from './migrate-legacy';
 import { registerHandlers } from './ipc/handlers';
 import { Scheduler } from './scheduler/scheduler';
 import { CircuitBreaker } from './scheduler/circuit-breaker';
@@ -48,7 +48,7 @@ async function boot() {
   if (legacy.migrated)
     localLog.logger.info(
       { from: legacy.from, copied: legacy.copied, failed: legacy.failed },
-      'Imported data from Relay',
+      LEGACY_IMPORT_NOTICE.log,
     );
   const db = openDatabase(join(dataDir, 'handpost.db'));
   database = db;
@@ -118,8 +118,8 @@ async function boot() {
   );
   if (legacy.migrated)
     new Notification({
-      title: 'Handpost imported your Relay data',
-      body: 'Drafts, queue, history and browser sessions were copied over. The old Relay folder was left untouched.',
+      title: LEGACY_IMPORT_NOTICE.title,
+      body: LEGACY_IMPORT_NOTICE.body,
     }).show();
   localLog.logger.info('Handpost ready');
 }
