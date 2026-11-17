@@ -1,0 +1,29 @@
+{
+  "handpost": 1,
+  "app_version": "0.2.0",
+  "generated_at": "2026-11-18T03:14:09Z",
+  "alive_until": "2026-11-18T03:24:09Z",
+  "timezone": "Asia/Dhaka",
+  "inbox": { "auto_schedule": true, "accepts": ["md", "json"], "accepts_versions": [1], "max_file_kb": 256, "media_outside_inbox": false },
+  "platforms": {
+    "x": { "connected": true, "status": "ok", "handle": "@tanzir", "daily_cap": 4, "scheduled_today": 2, "frozen_until": null,
+      "next_free_slots": ["2026-11-18T04:30:00Z", "2026-11-18T11:00:00Z", "2026-11-19T04:30:00Z"],
+      "limits": { "max_chars": 280, "max_media": 4, "media_kinds": ["image", "video"], "threads": true } },
+    "linkedin": { "connected": true, "status": "ok", "handle": "in/tanzir", "daily_cap": 2, "scheduled_today": 1, "frozen_until": null,
+      "next_free_slots": ["2026-11-19T02:15:00Z", "2026-11-21T02:15:00Z"],
+      "limits": { "max_chars": 3000, "max_media": 9, "media_kinds": ["image", "video"], "threads": false } },
+    "bluesky": { "connected": true, "status": "ok", "handle": "@tanzir.bsky.social", "daily_cap": 4, "scheduled_today": 1, "frozen_until": null,
+      "next_free_slots": ["2026-11-19T03:00:00Z"],
+      "limits": { "max_chars": 300, "max_media": 4, "media_kinds": ["image"], "threads": false } },
+    "threads": { "connected": false, "status": "needs_login", "handle": "@tanzir", "daily_cap": 3, "scheduled_today": 0, "frozen_until": null,
+      "next_free_slots": [], "limits": { "max_chars": 500, "max_media": 10, "media_kinds": ["image", "video"], "threads": false } },
+    "instagram": { "connected": true, "status": "frozen", "handle": "@tanzir.makes", "daily_cap": 1, "scheduled_today": 0, "frozen_until": "2026-11-19T08:20:00Z",
+      "next_free_slots": [], "limits": { "max_chars": 2200, "max_media": 10, "media_kinds": ["image"], "threads": false } }
+  },
+  "upcoming": [
+    { "id": "weekly-tips-20261120-folder-scheduling", "platforms": ["x", "linkedin", "bluesky"], "scheduled_at": "2026-11-20T03:30:00Z", "state": "scheduled", "preview": "Tip #47 — Schedule posts from a folder." }
+  ],
+  "recent": [
+    { "id": "daily-digest-20261118", "platform": "linkedin", "status": "published", "published_at": "2026-11-18T02:15:40Z", "url": "https://www.linkedin.com/feed/update/urn:li:activity:7263000000000000000/" }
+  ]
+}

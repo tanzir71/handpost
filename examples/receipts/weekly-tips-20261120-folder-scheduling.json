@@ -1,0 +1,20 @@
+{
+  "handpost": 1,
+  "id": "weekly-tips-20261120-folder-scheduling",
+  "state": "partial",
+  "source": "claude:weekly-tips",
+  "file": "processed/2026-11/2026-11-20-weekly-tip.md",
+  "received_at": "2026-11-18T03:14:07Z",
+  "updated_at": "2026-11-20T03:31:02Z",
+  "mode": "schedule",
+  "warnings": [
+    { "code": "text_folds", "platform": "linkedin", "message": "Text will fold behind “see more” after 210 characters" }
+  ],
+  "errors": [],
+  "targets": [
+    { "platform": "x", "status": "published", "scheduled_at": "2026-11-20T03:30:00Z", "published_at": "2026-11-20T03:31:02Z", "url": "https://x.com/tanzir/status/1859000000000000000", "error": null },
+    { "platform": "linkedin", "status": "scheduled", "scheduled_at": "2026-11-20T03:30:00Z", "published_at": null, "url": null, "error": null },
+    { "platform": "bluesky", "status": "unverified", "scheduled_at": "2026-11-20T03:30:00Z", "published_at": null, "url": null,
+      "error": { "code": "verify_not_found", "class": "transient", "message": "Submitted, but the newest post on the profile did not match within 45 s" } }
+  ]
+}

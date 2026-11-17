@@ -1,12 +1,12 @@
-# Relay Progress
+# Handpost Progress
+
+Milestones are defined in `CLAUDE_CODE_HANDOFF.md` §4. The previous “Relay” milestones M0–M10 from `CODEX_HANDOFF.md` are complete for everything automatable (see git history up to `dd021e5`); their owner-only live gates are carried into H6 and the needs-owner list.
 
 ## Milestone status
-
-M0 [DONE] M1 [DONE] M2 [READY - owner Chrome gate] M3 [READY - owner live gate] M4 [DONE] M5 [DONE] M6 [READY - owner live gate] M7 [DONE] M8 [READY - owner live gate] M9 [READY - owner live gate] M10 [DONE]
+H0 [ ] H1 [ ] H2 [ ] H3 [ ] H4 [ ] H5 [ ] H6 [ ] H7 [ ] H8 [ ] H9 [ ] H10 [ ]
 
 ## Last iteration
-
-- Did: Completed a requirement-by-requirement handoff audit. Added browser-free publish preflight, X threads, non-blocking validation warnings, Instagram/Shorts constraints, per-platform selector ownership, idle engine cleanup, graceful shutdown, durable detection history, immediate tray state, actual Express MockSocial account polling, History permalinks/proof, archived evidence, keyboard calendar rescheduling, stricter IPC validation, ordered media attachment, state recalculation, redacted local logging, and the intentionally unimplemented AI extension interface.
-- Verified: The exact implementation commit passed a fresh `git clone --no-local`, native `npm ci`, `npm run check`, and `npm run build`. The suite contains 46 unit tests, 22 browser contracts, the account-to-three-post Express MockSocial E2E, and the headless CI fingerprint self-test. Zero-vulnerability production audit, sanitized `example.com` capture, Electron-native SQLite smoke, zero-TODO scan, and a six-screen renderer navigation/console/overlay/screenshot pass also succeeded. Direct coverage includes preflight-without-browser, queue-idle context closure, X thread ordering, unverified screenshots, proof/failure archive restoration, 24-hour circuit expiry, seven-day detection retention, humanizer pointer/typing behavior, and History proof/permalink rendering.
-- Next: Run the real-Chrome and live-platform owner gates in `docs/LIVE_TEST.md`; all automatable handoff acceptance is complete.
-- Blockers / needs-owner: Real Chrome is unavailable on this machine without administrator installation. Real X/LinkedIn session checks and all real-platform live-smoke tests require manual login/2FA and create public posts; per the handoff they are never faked.
+- Did: Handover prepared (2026-11-18): audit, inbox protocol v1 + JSON Schema + examples, Claude skill and Codex AGENTS.md for writers, design system and five app screens plus the landing page in Figma, landing-page spec with the Buy Me a Coffee section, GitHub Pages plan.
+- Verified: example inbox files validate against `schema/handpost-post.v1.schema.json` (Draft 2020-12); design-token text/background pairs checked for ≥ 4.5:1 contrast. No application code changed in this iteration.
+- Next: H0 — `.gitattributes` + renormalize, Prettier format pass, remove `any`.
+- Blockers / needs-owner: see `CLAUDE_CODE_HANDOFF.md` §10 (Pages setting, Chrome install, live rehearsal, license choice).
