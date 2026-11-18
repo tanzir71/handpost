@@ -1,0 +1,25 @@
+# Handpost
+
+> Handpost is a free, open-source, local-first desktop scheduler for social posts. It publishes by driving the owner's own logged-in Chrome (or Edge) through the platforms' real web interfaces, and it accepts new posts from Claude, Codex or any script as plain files dropped into a folder. It avoids platform APIs but introduces Terms-of-Service, account and UI-drift risk.
+
+Source: https://github.com/tanzir71/handpost
+Website: https://tanzir71.github.io/handpost/
+Safe mock demo: https://tanzir71.github.io/handpost/demo/
+
+## Automation inbox (for AI agents and scripts)
+
+- Inbox protocol v1: https://github.com/tanzir71/handpost/blob/master/docs/INBOX_PROTOCOL.md — write one Markdown or JSON file per post into `~/Handpost/inbox/` (write to `.tmp`, then rename), read `receipts/<id>.json` and `handpost.status.json` for results. No API, no server, no credentials.
+- JSON Schema: https://tanzir71.github.io/handpost/schema/handpost-post.v1.schema.json
+- Setup guide for Claude scheduled tasks, Claude Code and Codex: https://github.com/tanzir71/handpost/blob/master/docs/AUTOMATION.md
+- Inbox posts get the same validation, pacing, daily caps, jitter and circuit breaker as posts written in the app. Auto-schedule starts off, so files wait for the owner's approval.
+
+## Required caveats
+
+- Web-UI automation violates most platforms' terms; challenges, temporary blocks, or account loss are possible.
+- One publish at a time, human pacing, cooldowns, jitter, daily caps and a circuit breaker reduce risk but cannot remove it.
+- Platform selectors change; budget for roughly one adapter repair per month.
+- Instagram and TikTok are fragile and may require manual fallback.
+- Anything that can write to the inbox folder can publish to the owner's connected accounts.
+- Real-platform smoke tests require the owner's login and 2FA and create public posts. They are never run by CI or claimed by the website.
+- The public demo is browser-only canned data. It never contacts a platform or posts content.
+- Handpost never automates login and never exports cookies. Drafts, media, browser profiles, logs and proof stay on the owner's computer.
