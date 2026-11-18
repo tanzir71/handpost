@@ -30,6 +30,6 @@ The detailed owner procedure and failure drills are in `docs/LIVE_TEST.md`. Live
 | H5 | Schema-equality test, guide code-block validation, receipt/status schema validation, `npm run inbox:smoke` | Add the skill to Claude and run a scheduled task |
 | H6 | Identity per platform, no placeholder URLs, rehearsal contract on all 9 fixtures, `chrome_missing`, rehearsal e2e | Rehearse each connected platform; `docs/LIVE_TEST.md` |
 | H7 | `npm run dist`; `npm run dist:dir && npm run smoke:packaged`; installed-copy smoke (`HANDPOST_EXE=… npm run smoke:packaged`) | Push a `v*` tag to run `release.yml`; publish the draft release |
-| H8 | `npm run website:verify`, `npm run website:browser` (served under `/handpost/`) | Enable GitHub Pages; check the live URL |
+| H8 | `npm run website:verify`, `npm run website:browser` (served under `/handpost/`); `npm run website:publish` pushes `gh-pages`, then the live URL answers 200 for `/`, `/demo/` and `/schema/*.json` | Pages → Source: Deploy from a branch, `gh-pages` / (done 2026-11-19) |
 | H9 | Git source tests against a local bare repository (`npm run test -- git-source`) | Point it at a real repository |
 | H10 | Seeded inbox fuzzing, receipt/state audit, `npm run drift-audit`, MCP server tests | Recapture fixtures from real pages over time |
