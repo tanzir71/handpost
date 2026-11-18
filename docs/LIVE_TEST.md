@@ -51,6 +51,7 @@ These checks create real public posts. Run them manually; never put credentials 
 - [ ] Submit a known-invalid post and confirm an exact content error with no browser attempt.
 - [ ] Force an unverified submission and confirm the notification and manual fallback; *Retry verify* must only revisit the profile (no second post).
 - [ ] Press *Pause publishing* on the Queue with a post due in a few minutes; confirm nothing opens until *Resume publishing*.
+- [ ] Selector repair (docs/SELECTORS.md): in Accounts → X → *Selectors*, give *Post text box* a wrong selector with *Use only mine* and save; *Rehearse* must stop at “fill text” and the card must offer *Fix selectors*. *Copy prompt for Claude*, let Claude write `selectors/proposed/x.json`, then *Check against snapshot* (1+ match), *Rehearse with this fix* (passes, nothing posted) and *Apply*. Remove your wrong selector afterwards and Rehearse once more.
 - [ ] Temporarily start Handpost with `HANDPOST_BROWSER=chrome` on a machine without Chrome: due posts become `needs_attention` (`chrome_missing`) and Accounts shows **Install Google Chrome** instead of crashing.
 
 Record the date, platform, Handpost commit, result, and any permalink in a private owner log. Never commit live session artifacts.

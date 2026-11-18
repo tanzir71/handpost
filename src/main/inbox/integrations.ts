@@ -9,8 +9,13 @@ export const PROTOCOL_URL = 'https://github.com/tanzir71/handpost/blob/master/do
 export const AUTOMATION_URL = 'https://github.com/tanzir71/handpost/blob/master/docs/AUTOMATION.md';
 
 /** The packaged copy sits next to the bundle (scripts/copy-assets.ts); in development read the repo files. */
-export function readIntegration(name: 'HANDPOST_WRITER.md' | 'AGENTS.md'): string {
-  const repo = name === 'AGENTS.md' ? ['codex', 'AGENTS.md'] : ['claude', 'handpost-inbox', 'SKILL.md'];
+export function readIntegration(name: 'HANDPOST_WRITER.md' | 'AGENTS.md' | 'HANDPOST_SELECTORS.md'): string {
+  const repo =
+    name === 'AGENTS.md'
+      ? ['codex', 'AGENTS.md']
+      : name === 'HANDPOST_SELECTORS.md'
+        ? ['claude', 'handpost-selectors', 'SKILL.md']
+        : ['claude', 'handpost-inbox', 'SKILL.md'];
   const runtime = typeof __dirname === 'string' ? __dirname : process.cwd();
   for (const path of [join(runtime, 'integrations', name), join(process.cwd(), 'integrations', ...repo)])
     if (existsSync(path)) return readFileSync(path, 'utf8');

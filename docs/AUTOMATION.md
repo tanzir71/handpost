@@ -57,6 +57,10 @@ claude mcp add handpost -- node /path/to/handpost/dist/mcp/server.cjs --folder ~
 
 (Verify the subcommand with `claude mcp --help` for your version; for other clients, run the same `node … --folder …` command as a stdio server.) Tools: `handpost_status`, `handpost_write_post`, `handpost_cancel`, `handpost_receipt`, `handpost_list_receipts`.
 
+## F. Fixing broken selectors with Claude
+
+When a platform changes its page and a step stops finding its element, Handpost saves a report and a privacy-reduced page snapshot under `selectors/reports/` in the Handpost folder. Accounts → *platform* → **Selectors** → **Copy prompt for Claude** gives a prompt that points Claude at that report and at `selectors/README.md` (the [handpost-selectors skill](../integrations/claude/handpost-selectors/SKILL.md)); Claude writes a fix to `selectors/proposed/<platform>.json`, and you check it against the snapshot, rehearse with it and apply it in the same dialog. A proposal changes nothing until you apply it. Details: [SELECTORS.md](SELECTORS.md).
+
 ## Checking that it works
 
 | Symptom | Look at |

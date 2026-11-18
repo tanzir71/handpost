@@ -21,6 +21,7 @@ import type {
   Receipt,
   WriterRow,
 } from './inbox-types';
+import type { SelectorCheckResult, SelectorOverviewRow, SelectorPatch, SelectorsView } from './selectors';
 
 export interface AppInfo {
   version: string;
@@ -128,7 +129,14 @@ export interface HandpostApi {
     url: string;
   }): Promise<{ handle: string; profileUrl: string } | null>;
   /** Fills the platform's composer, screenshots and discards it. `null` when the owner cancelled a video pick. */
-  rehearse(input: { platform: PlatformId }): Promise<RehearsalView | null>;
+  rehearse(input: { platform: PlatformId; withProposal?: boolean }): Promise<RehearsalView | null>;
+  selectorsOverview(): Promise<SelectorOverviewRow[]>;
+  selectorsView(platform: PlatformId): Promise<SelectorsView>;
+  selectorsSave(input: { platform: PlatformId; patch: SelectorPatch | null }): Promise<void>;
+  selectorsProposal(input: { platform: PlatformId; action: 'apply' | 'discard' }): Promise<void>;
+  selectorsCheck(platform: PlatformId): Promise<SelectorCheckResult>;
+  selectorsCopyPrompt(platform: PlatformId): Promise<void>;
+  selectorsOpenReport(platform: PlatformId): Promise<void>;
   gitHealth(): Promise<GitHealthView | null>;
   gitSyncNow(): Promise<GitHealthView | null>;
 }

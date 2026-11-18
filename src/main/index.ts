@@ -16,6 +16,7 @@ import { detectBrowser } from './engine/browser-detect';
 import { LEGACY_IMPORT_NOTICE, migrateLegacyData } from './migrate-legacy';
 import { registerHandlers } from './ipc/handlers';
 import { Scheduler } from './scheduler/scheduler';
+import { SelectorService } from './selectors/service';
 import { CircuitBreaker } from './scheduler/circuit-breaker';
 import { PLATFORM_IDS } from '../shared/types';
 import { createLocalLogger } from './logging';
@@ -154,6 +155,20 @@ async function boot() {
       openAtLogin:
         db.prepare("SELECT value FROM settings WHERE key='launchAtLogin'").pluck().get() === 'true',
     });
+  // Accounts → Selectors: the owner's applied fixes, proposals in <Handpost folder>/selectors/, repair reports.
+  const checkChannel = engine.channel;
+  const selectorService = new SelectorService({
+    db,
+    folder: () => inbox!.folder,
+    appVersion: app.getVersion(),
+    guide: readIntegration('HANDPOST_SELECTORS.md') || undefined,
+    launch: async () =>
+      (await import('playwright')).chromium.launch({
+        headless: true,
+        ...(checkChannel === 'chromium' ? {} : { channel: checkChannel }),
+      }),
+  });
+  selectorService.install();
   scheduler = new Scheduler(
     db,
     engine,
@@ -165,7 +180,7 @@ async function boot() {
     },
     undefined,
     join(dataDir, 'artifacts'),
-    { browserReady: () => browser().found },
+    { browserReady: () => browser().found, repairs: selectorService },
   );
   const activeScheduler = scheduler;
   registerHandlers(
@@ -187,8 +202,9 @@ async function boot() {
     {
       git: { health: () => gitSource.health(), syncNow: gitCycle },
       browserInfo: browser,
-      rehearse: (platform, input) => activeScheduler.rehearse(platform, input),
+      rehearse: (platform, input, trial) => activeScheduler.rehearse(platform, input, trial),
       reverify: (targetId) => activeScheduler.reverify(targetId),
+      selectors: selectorService,
     },
   );
   scheduler.start();

@@ -38,6 +38,13 @@ const api: HandpostApi = {
   browserInfo: () => ipcRenderer.invoke('browser-info'),
   setProfileUrl: (v) => ipcRenderer.invoke('set-profile-url', v),
   rehearse: (v) => ipcRenderer.invoke('rehearse', v),
+  selectorsOverview: () => ipcRenderer.invoke('selectors-overview'),
+  selectorsView: (platform) => ipcRenderer.invoke('selectors-view', platform),
+  selectorsSave: (v) => ipcRenderer.invoke('selectors-save', v),
+  selectorsProposal: (v) => ipcRenderer.invoke('selectors-proposal', v),
+  selectorsCheck: (platform) => ipcRenderer.invoke('selectors-check', platform),
+  selectorsCopyPrompt: (platform) => ipcRenderer.invoke('selectors-copy-prompt', platform),
+  selectorsOpenReport: (platform) => ipcRenderer.invoke('selectors-open-report', platform),
   gitHealth: () => ipcRenderer.invoke('git-health'),
   gitSyncNow: () => ipcRenderer.invoke('git-sync-now'),
 };

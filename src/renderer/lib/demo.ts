@@ -6,6 +6,64 @@ import type { AppInfo, HandpostApi, HandpostSnapshot } from '../../shared/api';
 import type { InboxListItem, Receipt, ReceiptTarget } from '../../shared/inbox-types';
 import type { AttemptListRow, PostRow, TargetListRow } from '../../shared/rows';
 import type { PlatformId } from '../../shared/types';
+import type { SelectorPatch, SelectorProposalView, SelectorSlotView } from '../../shared/selectors';
+
+/** X's slots as the Selectors dialog lists them (a subset of src/main/adapters/slots.ts, for the demo). */
+const DEMO_X_SLOTS: SelectorSlotView[] = [
+  {
+    key: 'loggedIn',
+    label: 'Logged-in marker',
+    hint: 'Home page: present only when the account is logged in',
+    builtIn: [
+      '[data-testid="SideNav_AccountSwitcher_Button"]',
+      '[data-handpost="logged-in"]',
+      '[aria-label="Profile"]',
+    ],
+  },
+  {
+    key: 'composer',
+    label: 'Composer',
+    hint: 'Compose page: waited for before typing',
+    builtIn: ['[data-testid="tweetTextarea_0"]', '[data-handpost="composer"]', 'form'],
+  },
+  {
+    key: 'text',
+    label: 'Post text box',
+    hint: 'Compose page: where the post text is typed',
+    builtIn: [
+      '[data-testid="tweetTextarea_0"]',
+      '[data-handpost="text"]',
+      '[contenteditable="true"]',
+      'textarea',
+    ],
+  },
+  {
+    key: 'submit',
+    label: 'Post button',
+    hint: 'Compose page: clicked to publish (never during Rehearse)',
+    builtIn: ['[data-testid="tweetButton"]', '[data-handpost="submit"]', 'button[type="submit"]'],
+  },
+  {
+    key: 'post',
+    label: 'Post on profile',
+    hint: 'Own profile: each published post, matched by its text',
+    builtIn: ['[data-testid="tweet"]', '[data-handpost="post"]', 'article'],
+  },
+];
+const freshDemoSelectors = (): { active: SelectorPatch | null; proposal: SelectorProposalView | null } => ({
+  active: null,
+  proposal: {
+    file: '',
+    patch: {
+      format: 'handpost-selectors/1',
+      platform: 'x',
+      note: 'The composer now nests the editable box inside tweetTextarea_0RichTextInputContainer; the old test id is gone.',
+      slots: { text: ['[data-testid="tweetTextarea_0RichTextInputContainer"] [contenteditable="true"]'] },
+    },
+    errors: [],
+    modifiedAt: new Date(Date.now() - 20 * 60_000).toISOString(),
+  },
+});
 
 const MIN = 60_000;
 const HOUR = 60 * MIN;
@@ -377,6 +435,7 @@ export function createDemoApi(): HandpostApi {
     platform: 'win32',
   };
   const folder = 'C:\\Users\\you\\Handpost';
+  const demoSelectors = freshDemoSelectors();
   const decide = (id: string, state: Receipt['state']) => {
     inbox = inbox.map((row) =>
       row.id === id && row.state === 'held'
@@ -497,6 +556,63 @@ export function createDemoApi(): HandpostApi {
       ],
       error: null,
     }),
+    selectorsOverview: async () => [
+      {
+        platform: 'x',
+        overrides: Object.keys(demoSelectors.active?.slots ?? {}).length,
+        proposal: demoSelectors.proposal !== null,
+        report: {
+          at: iso(-35 * 60_000),
+          step: 'fill text',
+          kind: 'failed',
+          fixedAfter: demoSelectors.active !== null,
+        },
+      },
+    ],
+    selectorsView: async (platform) => {
+      const x = platform === 'x';
+      const proposalPath = `${folder}\\selectors\\proposed\\${platform}.json`;
+      return {
+        platform,
+        slots: x ? DEMO_X_SLOTS : [],
+        active: x ? demoSelectors.active : null,
+        proposal: x && demoSelectors.proposal ? { ...demoSelectors.proposal, file: proposalPath } : null,
+        report: x
+          ? {
+              dir: `${folder}\\selectors\\reports\\x\\2026-11-18T13-25-00-000Z`,
+              at: iso(-35 * 60_000),
+              step: 'fill text',
+              slots: ['text'],
+              kind: 'failed',
+              error: 'locator.fill: Timeout 30000ms exceeded.',
+              hasHtml: true,
+            }
+          : null,
+        proposalPath,
+        prompt: `Handpost could not complete the "fill text" step on X.\nRead ${folder}\\selectors\\reports\\x\\…\\report.json and page.html …`,
+      };
+    },
+    selectorsSave: async ({ patch }) => {
+      demoSelectors.active = patch;
+    },
+    selectorsProposal: async ({ action }) => {
+      if (action === 'apply' && demoSelectors.proposal?.patch)
+        demoSelectors.active = demoSelectors.proposal.patch;
+      demoSelectors.proposal = null;
+    },
+    selectorsCheck: async () => ({
+      report: `${folder}\\selectors\\reports\\x\\2026-11-18T13-25-00-000Z`,
+      rows: [
+        {
+          slot: 'text',
+          selector: '[data-testid="tweetTextarea_0RichTextInputContainer"] [contenteditable="true"]',
+          matches: 1,
+          relevant: true,
+        },
+      ],
+    }),
+    selectorsCopyPrompt: async () => {},
+    selectorsOpenReport: async () => {},
     gitHealth: async () => ({
       enabled: false,
       url: '',

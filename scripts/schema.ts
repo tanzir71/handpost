@@ -5,6 +5,7 @@
  */
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import { defaultInboxSchemas } from '../src/shared/inbox-schema';
+import { selectorPatchSchema } from '../src/shared/selectors';
 
 type Json = Record<string, unknown>;
 
@@ -47,8 +48,31 @@ export function serializeSchema(schema: Json): string {
   return `${JSON.stringify(schema, null, 2)}\n`;
 }
 
+/** schema/handpost-selectors.v1.schema.json: a proposed selector fix (docs/SELECTORS.md). */
+export function buildSelectorsJsonSchema(): Json {
+  const { $schema: _ignored, ...generated } = zodToJsonSchema(selectorPatchSchema, {
+    target: 'jsonSchema2019-09',
+    $refStrategy: 'none',
+  }) as Json;
+  void _ignored;
+  return {
+    $schema: 'https://json-schema.org/draft/2020-12/schema',
+    $id: 'https://tanzir71.github.io/handpost/schema/handpost-selectors.v1.schema.json',
+    title: 'Handpost selector fix — handpost-selectors/1',
+    description:
+      'Replacement selectors for one platform, written to <Handpost folder>/selectors/proposed/<platform>.json and applied by the owner in Accounts → Selectors. Every slot listed in "replace" must also appear in "slots". Generated from src/shared/selectors.ts (npm run schema). Spec: docs/SELECTORS.md.',
+    ...generated,
+  };
+}
+
 if (process.argv[1] && /schema\.ts$/.test(process.argv[1])) {
   const { writeFile } = await import('node:fs/promises');
   await writeFile('schema/handpost-post.v1.schema.json', serializeSchema(buildPostJsonSchema()), 'utf8');
   console.log('Wrote schema/handpost-post.v1.schema.json');
+  await writeFile(
+    'schema/handpost-selectors.v1.schema.json',
+    serializeSchema(buildSelectorsJsonSchema()),
+    'utf8',
+  );
+  console.log('Wrote schema/handpost-selectors.v1.schema.json');
 }

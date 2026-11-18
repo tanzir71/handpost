@@ -43,3 +43,6 @@ mv "inbox/.tmp/$ID.md" "inbox/$ID.md"
 Read `receipts/<id>.json` (state, per-platform status, url, warnings, errors). If the file went to `rejected/`, read `rejected/<file>.error.json`, fix the problem and write a new file.
 
 Never write outside `./inbox/`; never edit `processed/`, `rejected/`, `receipts/` or the status file.
+
+## Fixing selectors (only when asked)
+If the owner asks you to fix a Handpost selector, follow `./selectors/README.md` instead: read the newest report under `selectors/reports/<platform>/`, and write only `selectors/proposed/<platform>.json`. The owner reviews and applies it in Handpost; it does nothing on its own.

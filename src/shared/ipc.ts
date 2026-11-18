@@ -1,6 +1,20 @@
 import { z } from 'zod';
 import { PLATFORM_IDS } from './types';
+import { selectorPatchSchema } from './selectors';
 export const accountConnectSchema = z.object({ platform: z.enum(PLATFORM_IDS) });
+/** Rehearse, optionally with the proposed selector fix layered on top (it is not applied by rehearsing). */
+export const rehearseSchema = z.object({
+  platform: z.enum(PLATFORM_IDS),
+  withProposal: z.boolean().optional(),
+});
+export const selectorsSaveSchema = z.object({
+  platform: z.enum(PLATFORM_IDS),
+  patch: selectorPatchSchema.nullable(),
+});
+export const selectorsProposalSchema = z.object({
+  platform: z.enum(PLATFORM_IDS),
+  action: z.enum(['apply', 'discard']),
+});
 const text = z.string().max(100_000);
 const targetOptions = z
   .record(z.union([z.string().max(100_000), z.boolean()]))

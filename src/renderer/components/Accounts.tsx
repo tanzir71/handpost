@@ -1,6 +1,18 @@
-import { useEffect, useState, type ReactNode } from 'react';
-import { ExternalLink, Eye, Plus, RefreshCw, ShieldCheck, TriangleAlert, Trash2 } from 'lucide-react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import {
+  ExternalLink,
+  Eye,
+  Plus,
+  RefreshCw,
+  ShieldCheck,
+  Sparkles,
+  TriangleAlert,
+  Trash2,
+  Wrench,
+} from 'lucide-react';
 import type { RehearsalView } from '../../shared/api';
+import type { SelectorOverviewRow } from '../../shared/selectors';
+import { SelectorsModal } from './SelectorsModal';
 import { capabilities } from '../../shared/capabilities';
 import type { BreakerRow } from '../../shared/inbox-types';
 import type { AccountRow, Fields, SettingRow, SlotRow } from '../../shared/rows';
@@ -64,6 +76,18 @@ export function Accounts({
   const [rehearsals, setRehearsals] = useState<Record<string, Rehearsal>>({});
   const [summary, setSummary] = useState('');
   const [breakers, setBreakers] = useState<BreakerRow[]>([]);
+  const [selectorRows, setSelectorRows] = useState<SelectorOverviewRow[]>([]);
+  const [fixing, setFixing] = useState<PlatformId | null>(null);
+  const loadSelectors = useCallback(async () => {
+    try {
+      setSelectorRows((await handpostApi.selectorsOverview()) ?? []);
+    } catch {
+      // No selector details without the main process (tests); the cards still offer the dialog.
+    }
+  }, []);
+  useEffect(() => {
+    void loadSelectors();
+  }, [accounts, loadSelectors]);
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -99,6 +123,8 @@ export function Accounts({
       return null;
     } finally {
       setBusy(null);
+      // A failed step may have saved a selector repair report.
+      void loadSelectors();
     }
   };
   const rehearseAll = async () => {
@@ -175,6 +201,13 @@ export function Accounts({
             const breaker = breakers.find((row) => row.platform === platform);
             const lastEvent = breaker?.events[breaker.events.length - 1];
             const rehearsal = rehearsals[platform];
+            const selectorRow = selectorRows.find((row) => row.platform === platform);
+            const recentFailure =
+              selectorRow?.report?.kind === 'failed' &&
+              !selectorRow.report.fixedAfter &&
+              Date.now() - Date.parse(selectorRow.report.at) < 7 * 24 * 3_600_000
+                ? selectorRow.report
+                : null;
             const askUrl = (connected && !account.profile_url) || editingUrl === platform;
             const connect = async () => {
               await handpostApi.connect({ platform });
@@ -228,6 +261,28 @@ export function Accounts({
                         : `Detection event${lastEvent ? ` ${formatDayTime(lastEvent)}` : ''}. Frozen for 24 h; a second event in 7 days needs manual re-enable.`}
                     </span>
                   </p>
+                )}
+                {linked && selectorRow?.proposal ? (
+                  <div className="hp-callout hp-callout--ink account-card__note account-card__note--action">
+                    <Sparkles size={14} aria-hidden="true" />
+                    <span>A selector fix is waiting for your review.</span>
+                    <Button size="s" kind="ghost" onClick={() => setFixing(platform)}>
+                      Review
+                    </Button>
+                  </div>
+                ) : (
+                  linked &&
+                  recentFailure && (
+                    <div className="hp-callout hp-callout--warn account-card__note account-card__note--action">
+                      <TriangleAlert size={14} aria-hidden="true" />
+                      <span>
+                        “{recentFailure.step}” could not find its element {ago(recentFailure.at)}.
+                      </span>
+                      <Button size="s" kind="ghost" onClick={() => setFixing(platform)}>
+                        Fix selectors
+                      </Button>
+                    </div>
+                  )
                 )}
                 {linked ? (
                   <dl className="account-card__meta">
@@ -302,6 +357,11 @@ export function Accounts({
                       Slots &amp; caps
                     </Button>
                   )}
+                  {linked && (
+                    <Button kind="ghost" size="s" icon={Wrench} onClick={() => setFixing(platform)}>
+                      {selectorRow?.overrides ? `Selectors (${selectorRow.overrides})` : 'Selectors'}
+                    </Button>
+                  )}
                 </div>
                 {rehearsal && <RehearsalResult platform={platform} {...rehearsal} />}
               </Card>
@@ -323,6 +383,17 @@ export function Accounts({
               </>
             )
           }
+        />
+      )}
+      {fixing && (
+        <SelectorsModal
+          platform={fixing}
+          canRehearse={real.some((account) => account.platform === fixing && account.status === 'ok')}
+          onClose={() => {
+            setFixing(null);
+            void loadSelectors();
+          }}
+          onChanged={() => void loadSelectors()}
         />
       )}
       {editing && (

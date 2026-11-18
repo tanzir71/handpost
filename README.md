@@ -106,7 +106,7 @@ Drafts retain their selected targets, platform-specific text and first comments,
 ## Honest caveats
 
 - **Terms of service:** automated posting through web UIs violates most platforms' terms even at human volume. A challenge, action block, or account loss is possible. The circuit breaker and manual fallback reduce — not remove — this risk, and Handpost never hides detection events.
-- **UI drift:** platform selectors will change. Per-platform selector modules, sanitized fixtures, and contract tests make repair localized. Budget for roughly one adapter repair per month.
+- **UI drift:** platform selectors will change. Per-platform selector modules, sanitized fixtures, and contract tests make repair localized. Budget for roughly one adapter repair per month. Between releases you can fix a broken selector yourself in Accounts → Selectors, or have Claude propose a fix from the page snapshot Handpost saves when a step fails; you review and apply it ([docs/SELECTORS.md](docs/SELECTORS.md)).
 - **Instagram and TikTok:** the fragile frontier. Handpost uses conservative pacing and can hand content back to you through "Open manually" when reliable automation is unavailable.
 - **Inbox trust boundary:** any process that can write to `~/Handpost/inbox/` can publish to your connected accounts. Keep auto-schedule off (the default) until you trust every writer.
 - Live platform publishing is intentionally excluded from automated tests (`npm run check`, and the manual-only GitHub workflows). Only the owner runs [the live checklist](docs/LIVE_TEST.md), because it uses real sessions and creates public posts.
@@ -115,7 +115,7 @@ Drafts retain their selected targets, platform-specific text and first comments,
 
 - **`ffprobe` warnings** → install FFmpeg and ensure `ffprobe` is on PATH; only video metadata depth is affected.
 - **"Install Google Chrome" in Accounts** → install Chrome or Edge; `npm run browser:info` shows what Handpost found.
-- **A platform suddenly fails** → likely UI drift; capture a fixture (`npm run capture`) and check the matching selector module.
+- **A platform suddenly fails** → likely UI drift. Accounts → *platform* → **Selectors** shows the failed step; fix the selector there, or **Copy prompt for Claude** and review its proposal ([docs/SELECTORS.md](docs/SELECTORS.md)). From a checkout, capture a fixture (`npm run capture`) and fix the matching selector module.
 - **Circuit breaker tripped** → Handpost detected a challenge/block signal; it pauses that platform for 24 h. Publish manually via "Open manually" meanwhile.
 - **An inbox file never leaves `inbox/`** → see the checklist in [docs/AUTOMATION.md](docs/AUTOMATION.md#checking-that-it-works).
 

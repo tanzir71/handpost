@@ -37,12 +37,16 @@ import { validGitUrl, type GitHealth } from '../inbox/git-source';
 import type { RehearsalInput, RehearsalResult } from '../scheduler/scheduler';
 import type { PlatformId } from '../../shared/types';
 import { existsSync } from 'node:fs';
+import { rehearseSchema, selectorsProposalSchema, selectorsSaveSchema } from '../../shared/ipc';
+import type { SelectorPatch } from '../../shared/selectors';
+import type { SelectorService } from '../selectors/service';
 
 export interface LiveDeps {
   browserInfo?: () => BrowserInfo;
   git?: { health(): GitHealth; syncNow(): Promise<GitHealth> };
-  rehearse?: (platform: PlatformId, input: RehearsalInput) => Promise<RehearsalResult>;
+  rehearse?: (platform: PlatformId, input: RehearsalInput, trial?: SelectorPatch) => Promise<RehearsalResult>;
   reverify?: (targetId: number) => Promise<'published' | 'unverified'>;
+  selectors?: SelectorService;
 }
 import { inboxIdSchema, inboxOpenSchema, profileUrlSchema, targetIdSchema } from '../../shared/ipc';
 import { SETTING_KEYS } from '../inbox/service';
@@ -230,7 +234,11 @@ export function registerHandlers(
       properties: ['openFile'],
       filters: [{ name: 'Handpost archive', extensions: ['zip'] }],
     });
-    if (!result.canceled) importArchive(db, result.filePaths[0]!, dataDir);
+    if (!result.canceled) {
+      importArchive(db, result.filePaths[0]!, dataDir);
+      // Applied selector fixes are settings rows; put the imported ones into effect.
+      live.selectors?.install();
+    }
   });
   handle('open-manual', async (rawTargetId: unknown) => {
     const targetId = positiveIdSchema.parse(rawTargetId);
@@ -346,8 +354,19 @@ export function registerHandlers(
     return live.reverify(targetId);
   });
   handle('rehearse', async (raw) => {
-    const { platform } = accountConnectSchema.parse(raw);
+    const { platform, withProposal } = rehearseSchema.parse(raw);
     if (!live.rehearse) throw new Error('Rehearsal is not available');
+    let trial: SelectorPatch | undefined;
+    if (withProposal) {
+      const proposal = await live.selectors?.proposal(platform);
+      if (!proposal?.patch)
+        throw new Error(
+          proposal
+            ? `The proposed fix has problems: ${proposal.errors.join('; ')}`
+            : 'There is no proposed fix',
+        );
+      trial = proposal.patch;
+    }
     const input = await rehearsalPost(db, platform, dataDir, async () => {
       const result = await dialog.showOpenDialog({
         title: `Choose a short video to rehearse ${platform} with (it will not be posted)`,
@@ -357,12 +376,40 @@ export function registerHandlers(
       return result.canceled ? null : (result.filePaths[0] ?? null);
     });
     if (!input) return null;
-    const result = await live.rehearse(platform, input);
+    const result = await live.rehearse(platform, input, trial);
     const screenshot =
       result.screenshotPath && existsSync(result.screenshotPath)
         ? `data:image/png;base64,${(await readFile(result.screenshotPath)).toString('base64')}`
         : null;
     return { ...result, screenshot };
+  });
+  // Accounts → Selectors (docs/SELECTORS.md). Proposals from the Handpost folder only take effect through 'apply'.
+  const selectors = () => {
+    if (!live.selectors) throw new Error('Selector fixes are not available');
+    return live.selectors;
+  };
+  const platformOf = (raw: unknown) => accountConnectSchema.parse({ platform: raw }).platform;
+  handle('selectors-overview', () => selectors().overview());
+  handle('selectors-view', (raw) => selectors().view(platformOf(raw)));
+  handle('selectors-save', (raw) => {
+    const { platform, patch } = selectorsSaveSchema.parse(raw);
+    selectors().save(platform, patch);
+  });
+  handle('selectors-proposal', async (raw) => {
+    const { platform, action } = selectorsProposalSchema.parse(raw);
+    if (action === 'apply') await selectors().applyProposal(platform);
+    else await selectors().discardProposal(platform);
+  });
+  handle('selectors-check', (raw) => selectors().check(platformOf(raw)));
+  handle('selectors-copy-prompt', async (raw) => {
+    const view = await selectors().view(platformOf(raw));
+    clipboard.writeText(view.prompt);
+  });
+  handle('selectors-open-report', async (raw) => {
+    const report = await selectors().latestReport(platformOf(raw));
+    if (!report) throw new Error('There is no report yet');
+    const problem = await shell.openPath(report.dir);
+    if (problem) throw new Error(problem);
   });
   handle('app-info', () => ({
     version: app.getVersion(),

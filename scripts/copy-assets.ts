@@ -7,4 +7,6 @@ await cp('src/main/assets', 'dist/main/assets', { recursive: true });
 await mkdir('dist/main/integrations', { recursive: true });
 await cp('integrations/claude/handpost-inbox/SKILL.md', 'dist/main/integrations/HANDPOST_WRITER.md');
 await cp('integrations/codex/AGENTS.md', 'dist/main/integrations/AGENTS.md');
+// The selector-fix guide (docs/SELECTORS.md), written to <Handpost folder>/selectors/README.md.
+await cp('integrations/claude/handpost-selectors/SKILL.md', 'dist/main/integrations/HANDPOST_SELECTORS.md');
 console.log('Copied main-process runtime assets');

@@ -18,6 +18,9 @@ import { classifyError, retryDelay } from './retry';
 import { recalculatePostStatus } from './status';
 import { captureIdentity } from '../accounts/identity-store';
 import { isBrowserMissingError } from '../engine/browser-detect';
+import type { Page } from 'playwright';
+import type { SelectorPatch } from '../../shared/selectors';
+import { isSelectorFailure, type RepairCapture } from '../selectors/service';
 
 type DueRow = {
   id: number;
@@ -37,6 +40,8 @@ type DueRow = {
 export interface SchedulerOptions {
   /** False when no supported browser is installed; targets then wait as `needs_attention: chrome_missing`. */
   browserReady?: () => boolean;
+  /** Saves a selector repair report when a step cannot find its element (selectors/service.ts). */
+  repairs?: { capture(input: RepairCapture): Promise<unknown> };
 }
 
 export interface RehearsalInput {
@@ -64,7 +69,7 @@ export class Scheduler {
     private db: HandpostDatabase,
     private engine: BrowserEngine,
     private notify: (title: string, body: string) => void = () => {},
-    private resolveAdapter: (id: PlatformId) => PlatformAdapter = getAdapter,
+    private resolveAdapter: (id: PlatformId, trial?: SelectorPatch) => PlatformAdapter = getAdapter,
     private artifactDir = join(process.cwd(), 'handpost-data', 'artifacts'),
     private options: SchedulerOptions = {},
   ) {
@@ -240,9 +245,30 @@ export class Scheduler {
     };
   }
 
+  /** Writes a selector repair report; never lets a reporting problem change the outcome of a publish. */
+  private async repair(
+    page: Page | undefined,
+    platform: PlatformId,
+    step: string,
+    error: unknown,
+    kind: RepairCapture['kind'],
+  ) {
+    if (!this.options.repairs || !page) return;
+    await this.options.repairs.capture({ page, platform, step, error, kind }).catch(() => undefined);
+  }
+
+  /** The step that failed (from the step log) when a locator found nothing, or null for other errors. */
+  private failedSelectorStep(reporter: StepReporter | undefined, error: unknown): string | null {
+    if (!isSelectorFailure(error)) return null;
+    return (
+      [...(reporter?.logs ?? [])].reverse().find((log) => log.outcome === 'failed')?.name ?? 'unknown step'
+    );
+  }
+
   private async publish(row: DueRow) {
     const started = new Date().toISOString();
     let reporter: StepReporter | undefined;
+    let page: Page | undefined;
     try {
       if (this.breaker.isOpen(row.platform)) {
         this.db
@@ -271,10 +297,13 @@ export class Scheduler {
             .pluck()
             .get(`headless:${row.platform}`) === 'true');
       const ctx = await this.engine.context(row.platform, { headless, background: !headless });
-      const page = ctx.pages()[0] ?? (await ctx.newPage());
+      page = ctx.pages()[0] ?? (await ctx.newPage());
       reporter = new StepReporter(page, this.artifactDir);
       const session = await adapter.checkSession(ctx);
       if (session !== 'ok') {
+        // A missing logged-in marker looks exactly like a logged-out session; keep a snapshot in case it is drift.
+        if (session === 'logged_out')
+          await this.repair(page, row.platform, 'check session', null, 'possible');
         const detection = session === 'challenged';
         throw Object.assign(new Error(`Session ${session}`), {
           errorClass: detection ? 'suspected_detection' : 'session',
@@ -288,6 +317,7 @@ export class Scheduler {
       this.db.prepare('UPDATE post_targets SET attempt_count=attempt_count+1 WHERE id=?').run(row.id);
       await adapter.publish(ctx, post, reporter);
       const proof = await adapter.verify(ctx, post);
+      if (!proof.found) await this.repair(page, row.platform, 'verify on own profile', null, 'possible');
       const status = proof.found ? 'published' : 'unverified';
       this.db
         .prepare('UPDATE post_targets SET status=?,published_url=? WHERE id=?')
@@ -324,6 +354,8 @@ export class Scheduler {
       }
       if (errorClass === 'ui_drift' && reporter)
         await reporter.saveDriftSnapshot(row.platform).catch(() => undefined);
+      const failedStep = this.failedSelectorStep(reporter, error);
+      if (failedStep) await this.repair(page, row.platform, failedStep, error, 'failed');
       const delay = retryDelay(errorClass, row.attempt_count + 1);
       const status =
         errorClass === 'suspected_detection'
@@ -429,7 +461,11 @@ export class Scheduler {
    * step is never reached (factory.ts). Runs on the same one-at-a-time queue as publishing, in a visible window,
    * and is recorded as a `rehearsal` attempt on a hidden post that never appears in the queue.
    */
-  async rehearse(platform: PlatformId, input: RehearsalInput): Promise<RehearsalResult> {
+  async rehearse(
+    platform: PlatformId,
+    input: RehearsalInput,
+    trial?: SelectorPatch,
+  ): Promise<RehearsalResult> {
     return (await this.queue.add(async () => {
       const db = this.db;
       const account = db.prepare('SELECT id,profile_url FROM accounts WHERE platform=?').get(platform) as
@@ -473,22 +509,28 @@ export class Scheduler {
       };
       if (platform !== 'mock' && this.options.browserReady && !this.options.browserReady())
         return record('chrome_missing', [], null, 'Google Chrome (or Microsoft Edge) is not installed');
-      const adapter = this.resolveAdapter(platform);
+      const adapter = this.resolveAdapter(platform, trial);
       const post: RenderedPost = { ...input, artifactDir: this.artifactDir, profileUrl: account.profile_url };
       const problems = adapter.validate(post);
       if (problems.length) return record('failed', [], null, problems.join('; '));
       let reporter: StepReporter | undefined;
+      let page: Page | undefined;
       try {
         const ctx = await this.engine.context(platform, { headless: platform === 'mock', background: false });
-        const page = ctx.pages()[0] ?? (await ctx.newPage());
+        page = ctx.pages()[0] ?? (await ctx.newPage());
         reporter = new StepReporter(page, this.artifactDir);
         const session = await adapter.checkSession(ctx);
-        if (session !== 'ok') return record('needs_login', [], null, `Log in first (session: ${session})`);
+        if (session !== 'ok') {
+          if (session === 'logged_out') await this.repair(page, platform, 'check session', null, 'possible');
+          return record('needs_login', [], null, `Log in first (session: ${session})`);
+        }
         await captureIdentity(db, platform, adapter, page);
         const result = await adapter.publish(ctx, post, reporter, { rehearse: true });
         return record('rehearsal', reporter.logs, result.screenshotPath ?? null, null);
       } catch (error) {
         if (isBrowserMissingError(error)) return record('chrome_missing', [], null, String(error));
+        const failedStep = this.failedSelectorStep(reporter, error);
+        if (failedStep) await this.repair(page, platform, failedStep, error, 'failed');
         const failed = [...(reporter?.logs ?? [])].reverse().find((log) => log.outcome === 'failed');
         return record(
           'failed',
