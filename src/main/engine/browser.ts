@@ -1,4 +1,4 @@
-import { chromium, type BrowserContext } from 'playwright';
+import type { BrowserContext } from 'playwright';
 import { existsSync } from 'node:fs';
 import { chmod, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -55,6 +55,8 @@ export class BrowserEngine {
       '--disable-blink-features=AutomationControlled',
       ...(background && !headless ? ['--window-position=-32000,-32000'] : []),
     ];
+    // Loaded on first use: Playwright is the largest module in main and most app sessions never open a browser.
+    const { chromium } = await import('playwright');
     const context = await chromium.launchPersistentContext(profile, {
       ...(this.browserChannel === 'chromium' ? {} : { channel: this.browserChannel }),
       headless,

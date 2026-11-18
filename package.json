@@ -34,6 +34,7 @@
     "dist": "npm run build && electron-builder --publish never",
     "dist:dir": "npm run build && electron-builder --dir --publish never",
     "smoke:packaged": "tsx scripts/packaged-smoke.ts",
+    "perf": "tsx scripts/perf.ts",
     "website:shot": "node scripts/site-shot.mjs",
     "drift-audit": "tsx scripts/drift-audit.ts",
     "mcp": "tsx src/mcp/server.ts"
