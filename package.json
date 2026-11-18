@@ -37,6 +37,7 @@
     "smoke:packaged": "tsx scripts/packaged-smoke.ts",
     "perf": "tsx scripts/perf.ts",
     "website:shot": "node scripts/site-shot.mjs",
+    "website:publish": "tsx scripts/publish-site.ts",
     "drift-audit": "tsx scripts/drift-audit.ts",
     "mcp": "tsx src/mcp/server.ts"
   },

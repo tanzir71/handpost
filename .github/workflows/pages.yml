@@ -1,13 +1,15 @@
 name: pages
+# Manual only. The live site is served from the gh-pages branch, which `npm run website:publish` builds and
+# pushes from the owner's machine (owner, 2026-11-19: no GitHub Actions use). This workflow is kept for the
+# day Pages → Source is set back to "GitHub Actions".
 on:
-  push: { branches: [master], paths: ["site/**", "schema/**", ".github/workflows/pages.yml"] }
   workflow_dispatch:
 permissions: { contents: read, pages: write, id-token: write }
 concurrency: { group: pages, cancel-in-progress: true }
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: { name: github-pages, url: "${{ steps.deployment.outputs.page_url }}" }
+    environment: { name: github-pages, url: '${{ steps.deployment.outputs.page_url }}' }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

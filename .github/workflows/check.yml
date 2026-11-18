@@ -1,12 +1,8 @@
 name: check
-# Tags are not checked here: release.yml runs the full check on all three OSes before building.
-# Commits that only touch the session notes (PROGRESS.md, DECISIONS.md) change no code and skip CI.
+# Manual only (owner, 2026-11-19: no GitHub Actions use). `npm run check` runs locally before every commit;
+# start this from the Actions tab when a hosted run is wanted. release.yml still runs the full check on all
+# three OSes before it builds installers for a pushed v* tag.
 on:
-  push:
-    branches: ['**']
-    paths-ignore: [PROGRESS.md, DECISIONS.md]
-  pull_request:
-    paths-ignore: [PROGRESS.md, DECISIONS.md]
   workflow_dispatch:
 concurrency: { group: 'check-${{ github.ref }}', cancel-in-progress: true }
 jobs:

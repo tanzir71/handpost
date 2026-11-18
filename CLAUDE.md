@@ -28,13 +28,14 @@ npm run check          # lint + typecheck + unit + contract + e2e-lite + fingerp
 npm run dev            # Vite + Electron
 npm run build          # production bundles
 npm run website:verify # static site checks (updated in H8)
+npm run website:publish # push the committed site/ to gh-pages (GitHub Pages; no Actions)
 ```
 
 ## Map
 - `src/main/` — Electron main: `scheduler/`, `engine/` (Playwright, humanizer), `adapters/<platform>/`, `db/` (+ `migrations/`), `ipc/`, `media/`, `data/` (CSV, archive), `inbox/` (new in H2)
 - `src/renderer/` — React UI; `src/shared/` — types, zod IPC schemas, capability manifests
 - `tests/unit`, `tests/contract` (DOM fixtures), `tests/e2e` (MockSocial), `tests/fixtures/`
-- `site/` — static landing page + `demo/` (GitHub Pages after H8)
+- `site/` — static landing page + `demo/` (GitHub Pages from the `gh-pages` branch, pushed by `npm run website:publish`)
 - `docs/` — protocol, design, landing, automation, architecture, live test
 - `integrations/` — Claude skill and Codex AGENTS.md for inbox writers; `examples/` — protocol examples; `schema/` — JSON Schemas
 

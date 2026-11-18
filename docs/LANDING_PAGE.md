@@ -10,7 +10,7 @@ Target URL: **https://tanzir71.github.io/handpost/** (project site ⇒ every URL
 - Repo links point to `https://github.com/tanzir71/handpost` (the current site links the old `tanzir71/scheduler`).
 - Download buttons → `https://github.com/tanzir71/handpost/releases/latest`. Until the first release exists (H7), link “Read the source” prominently and label Download “Coming soon” rather than linking a 404.
 - Keep `site/demo/` (the mock queue walkthrough), restyled with the new tokens. Keep `site/.nojekyll` and `site/llms.txt` (rename Relay → Handpost; add the inbox protocol line).
-- Publish `schema/handpost-post.v1.schema.json` at `site/schema/handpost-post.v1.schema.json` (copied by the Pages workflow, not duplicated by hand).
+- Publish `schema/handpost-post.v1.schema.json` at `site/schema/handpost-post.v1.schema.json` (copied at publish time by `npm run website:publish`, not duplicated by hand).
 - Responsive: 1440 design, fluid down to 360. Breakpoints: ≤ 1080 px → how-it-works and caveats become 2 columns, automation and local-first stack (code card below text); ≤ 720 px → single column, nav collapses to logo + Download + a menu `<details>`, hero headline 56 px, product shot keeps aspect ratio and scrolls horizontally inside its frame rather than shrinking text below 10 px.
 - Metadata: `<title>Handpost — your posts, delivered by hand</title>`, description from the hero subtitle, OG image 1200×630 (stamp + headline on canvas, export from Figma or render with the same HTML), `favicon.svg` = the stamp mark, `theme-color` `#F4EFE6`.
 
@@ -63,11 +63,13 @@ jobs:
 ```
 
 - Owner, once: GitHub → repo Settings → Pages → Source: **GitHub Actions** (needs-owner).
+
+**Since 2026-11-19 the site is published without GitHub Actions** (owner's decision). `npm run website:publish` runs `site-schema.mjs` and `verify-website.mjs`, stages the committed contents of `site/` plus `schema/*.json` and `.nojekyll`, and pushes them as the next commit of the `gh-pages` branch (fast-forward, history kept; nothing is pushed when the site is unchanged; it refuses while `site/` or `schema/` has uncommitted changes). Pages → Source is **Deploy from a branch: `gh-pages` / (root)**. GitHub's own branch publisher (`pages-build-deployment`) still serves the branch; no workflow in this repository runs. `pages.yml` above is kept as a manual-only workflow for the day the source is switched back to GitHub Actions.
 - Update `scripts/verify-website.mjs` to assert: no root-absolute internal `href`/`src`; every internal link resolves to a file in `site/`; the Buy Me a Coffee link `https://buymeacoffee.com/tanzir` appears in the support section and the footer; no `<script src>` or font/CSS from another origin; the caveats section exists; `schema/handpost-post.v1.schema.json` is present after the copy step.
 
 ## 4. Acceptance
 
-- `node scripts/verify-website.mjs` passes locally and in the workflow.
+- `node scripts/verify-website.mjs` passes locally and before every `npm run website:publish`.
 - `npx http-server site -p 4173` (or any static server) serving the folder under a `/handpost/` prefix renders with no 404s in the browser console (use `scripts/verify-website-browser.mjs`, updated for the prefix).
 - Visual check against Figma `15:80` at 1440, plus manual checks at 1080, 720 and 390 widths.
 - After the owner enables Pages: https://tanzir71.github.io/handpost/ loads, the coffee button opens buymeacoffee.com/tanzir.

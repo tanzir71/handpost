@@ -95,6 +95,7 @@ First-time flow inside the app: **Connect** an account → a visible Chrome wind
 | `npm run seed -- handpost.db` | Seed platform account rows into a standalone database |
 | `npm run website:verify` | Static checks for the GitHub Pages site in `site/` (run `node scripts/site-schema.mjs` first) |
 | `npm run website:browser` | Loads the site under `/handpost/` in headless Chromium at four widths |
+| `npm run website:publish` | Verifies the committed `site/` and pushes it to the `gh-pages` branch that GitHub Pages serves (no GitHub Actions involved) |
 
 ## Safety and privacy
 
@@ -108,7 +109,7 @@ Drafts retain their selected targets, platform-specific text and first comments,
 - **UI drift:** platform selectors will change. Per-platform selector modules, sanitized fixtures, and contract tests make repair localized. Budget for roughly one adapter repair per month.
 - **Instagram and TikTok:** the fragile frontier. Handpost uses conservative pacing and can hand content back to you through "Open manually" when reliable automation is unavailable.
 - **Inbox trust boundary:** any process that can write to `~/Handpost/inbox/` can publish to your connected accounts. Keep auto-schedule off (the default) until you trust every writer.
-- Live platform publishing is intentionally excluded from CI. Only the owner runs [the live checklist](docs/LIVE_TEST.md), because it uses real sessions and creates public posts.
+- Live platform publishing is intentionally excluded from automated tests (`npm run check`, and the manual-only GitHub workflows). Only the owner runs [the live checklist](docs/LIVE_TEST.md), because it uses real sessions and creates public posts.
 
 ## Troubleshooting
 
