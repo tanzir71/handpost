@@ -1,5 +1,14 @@
 name: check
-on: [push, pull_request]
+# Tags are not checked here: release.yml runs the full check on all three OSes before building.
+# Commits that only touch the session notes (PROGRESS.md, DECISIONS.md) change no code and skip CI.
+on:
+  push:
+    branches: ['**']
+    paths-ignore: [PROGRESS.md, DECISIONS.md]
+  pull_request:
+    paths-ignore: [PROGRESS.md, DECISIONS.md]
+  workflow_dispatch:
+concurrency: { group: 'check-${{ github.ref }}', cancel-in-progress: true }
 jobs:
   check:
     runs-on: ubuntu-latest
