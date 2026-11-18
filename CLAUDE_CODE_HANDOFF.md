@@ -285,7 +285,7 @@ H0 [ ] H1 [ ] H2 [ ] H3 [ ] H4 [ ] H5 [ ] H6 [ ] H7 [ ] H8 [ ] H9 [ ] H10 [ ]
 ## 10. Needs-owner checklist
 - [ ] Review the Figma file; flag any screen to change before H4.
 - [x] Enable GitHub Pages (Source: GitHub Actions) after H8 merges. → Owner chose no GitHub Actions (2026-11-19): Source is the `gh-pages` branch, pushed by `npm run website:publish`.
-- [ ] Install Google Chrome on the dev machine if missing; run `npm run fingerprint -- --chrome`.
+- [x] Install Google Chrome on the dev machine if missing; run `npm run fingerprint -- --chrome`. → Chrome 158 installed per-user with winget (`Google.Chrome.EXE`) on the owner's go-ahead, 2026-11-19; the check passes.
 - [ ] Connect accounts and run Rehearse on each (H6), then `docs/LIVE_TEST.md`.
 - [ ] Add the `handpost-inbox` skill to Claude and create the first scheduled task (`docs/AUTOMATION.md` §A), initially with `mode: review`.
 - [x] Decide the license (no LICENSE file exists yet; the site says “open source”, so one is needed before the first release). → MIT, chosen by the owner 2026-11-18.
