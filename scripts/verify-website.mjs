@@ -178,6 +178,11 @@ if (home.indexOf('id="support"') > home.indexOf('<footer'))
   fail('the support section must sit above the footer');
 if (/buymeacoffee\.com\/[^"]*\.js|bmc-widget/i.test(home))
   fail('no Buy Me a Coffee widget script is allowed');
+// The site says "open source", so the footer names the license and the repository carries it.
+if (!/href="https:\/\/github\.com\/tanzir71\/handpost\/blob\/master\/LICENSE">MIT License</.test(footer))
+  fail('the footer does not link the MIT license');
+if (!(await readFile(path.resolve('LICENSE'), 'utf8')).startsWith('MIT License'))
+  fail('LICENSE is missing or not the MIT license');
 
 // 4. Design tokens copied from the app stay identical.
 const tokens = await readFile(path.resolve('src/renderer/styles/tokens.css'), 'utf8');

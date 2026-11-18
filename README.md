@@ -121,3 +121,7 @@ Drafts retain their selected targets, platform-specific text and first comments,
 ## Support
 
 Handpost is free. If it saves you a scheduler subscription, a coffee keeps the late-night builds going: [buymeacoffee.com/tanzir](https://buymeacoffee.com/tanzir).
+
+## License
+
+[MIT](LICENSE) © 2026 Tanzir Rahman. The bundled fonts keep their own SIL Open Font License files next to them.

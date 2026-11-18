@@ -3,6 +3,7 @@
   "productName": "Handpost",
   "description": "Local-first desktop scheduler that posts through your own browser and takes posts from Claude or Codex via a folder.",
   "version": "0.2.0",
+  "license": "MIT",
   "private": true,
   "type": "module",
   "overrides": {

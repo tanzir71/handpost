@@ -101,3 +101,7 @@ The Queue is one chronological agenda grouped by day, as in the frame, instead o
 ## 2026-11-18 - H7: CI spends minutes only where they buy something
 
 After the first tag push used the owner's Actions quota, `check.yml` was narrowed instead of the release gate: a tag push ran `npm run check` four times (check.yml on the tag plus release.yml on Windows, macOS and Linux), so check.yml now runs on branch pushes and pull requests only and the three-OS check in release.yml stays the gate for installers. Pushes that touch nothing but the session notes (PROGRESS.md, DECISIONS.md) skip CI; any commit that also changes code, docs/INBOX_PROTOCOL.md or schemas still runs it. A newer push to the same ref cancels the older run. No test or check was removed or weakened.
+
+## 2026-11-18 - License: MIT
+
+The owner chose MIT. The copyright line matches `electron-builder.yml` and the site footer (“© 2026 Tanzir Rahman”). `LICENSE` is listed in electron-builder's `files`, so every installer carries the notice inside `app.asar`; the NSIS license page was not enabled because the assisted installer would gain a click without telling the owner anything new. The bundled fonts stay under their SIL Open Font License files, which sit next to them in `src/renderer/assets/fonts/` and `site/fonts/`. `website:verify` checks both the footer link and the `LICENSE` file so the site's “open source” claim cannot outlive the license. The `v0.2.0-rc.1` draft was built before this commit; its installers do not contain `LICENSE`.

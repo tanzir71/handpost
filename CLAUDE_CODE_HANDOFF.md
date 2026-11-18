@@ -288,7 +288,7 @@ H0 [ ] H1 [ ] H2 [ ] H3 [ ] H4 [ ] H5 [ ] H6 [ ] H7 [ ] H8 [ ] H9 [ ] H10 [ ]
 - [ ] Install Google Chrome on the dev machine if missing; run `npm run fingerprint -- --chrome`.
 - [ ] Connect accounts and run Rehearse on each (H6), then `docs/LIVE_TEST.md`.
 - [ ] Add the `handpost-inbox` skill to Claude and create the first scheduled task (`docs/AUTOMATION.md` §A), initially with `mode: review`.
-- [ ] Decide the license (no LICENSE file exists yet; the site says “open source”, so one is needed before the first release).
+- [x] Decide the license (no LICENSE file exists yet; the site says “open source”, so one is needed before the first release). → MIT, chosen by the owner 2026-11-18.
 - [ ] Approve pushing the first release tag.
 
 ## 11. Risks (unchanged in substance — keep them in README and on the site)

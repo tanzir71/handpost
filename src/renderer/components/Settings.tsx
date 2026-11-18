@@ -505,6 +505,8 @@ function About() {
           <dd className="t-mono-s">{info?.version ?? '—'}</dd>
           <dt>Data folder</dt>
           <dd className="t-mono-s">{info?.dataDir ?? '—'}</dd>
+          <dt>License</dt>
+          <dd>MIT · free and open source</dd>
         </dl>
         <p className="t-body-s secondary-text">
           Handpost never checks for updates on its own. Releases are on GitHub when you want them.
