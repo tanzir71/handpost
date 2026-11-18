@@ -171,6 +171,100 @@ export function ConfirmPopover({
   );
 }
 
+/**
+ * A button that opens a short list of choices below it (Compose → Use template, Open draft). Arrow keys move
+ * through the items, Escape or a click elsewhere closes it and focus returns to the button.
+ */
+export function MenuButton({
+  label,
+  icon,
+  kind = 'secondary',
+  items,
+  onSelect,
+  empty = 'Nothing here yet.',
+}: {
+  label: string;
+  icon?: LucideIcon;
+  kind?: 'primary' | 'secondary' | 'ghost';
+  items: Array<{ id: string; label: string }>;
+  onSelect: (id: string) => void;
+  empty?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const anchor = useRef<HTMLSpanElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const id = useId();
+  useEffect(() => {
+    if (!open) return;
+    anchor.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+    const away = (event: MouseEvent) => {
+      if (!anchor.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', away);
+    return () => document.removeEventListener('mousedown', away);
+  }, [open]);
+  const close = () => {
+    setOpen(false);
+    trigger.current?.focus();
+  };
+  return (
+    <span className="hp-popover-anchor" ref={anchor}>
+      <Button
+        kind={kind}
+        {...(icon ? { icon } : {})}
+        ref={trigger}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-controls={open ? id : undefined}
+        onClick={() => setOpen((value) => !value)}
+      >
+        {label}
+      </Button>
+      {open && (
+        <div
+          id={id}
+          role="menu"
+          aria-label={label}
+          className="hp-popover hp-popover--below hp-menu"
+          onKeyDown={(event) => {
+            const options = [...event.currentTarget.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+            const index = options.indexOf(document.activeElement as HTMLElement);
+            if (event.key === 'Escape') {
+              event.preventDefault();
+              close();
+            } else if (event.key === 'ArrowDown' && options.length) {
+              event.preventDefault();
+              options[(index + 1) % options.length]?.focus();
+            } else if (event.key === 'ArrowUp' && options.length) {
+              event.preventDefault();
+              options[(index - 1 + options.length) % options.length]?.focus();
+            }
+          }}
+        >
+          {items.length ? (
+            items.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                role="menuitem"
+                className="hp-menu__item"
+                onClick={() => {
+                  close();
+                  onSelect(item.id);
+                }}
+              >
+                {item.label}
+              </button>
+            ))
+          ) : (
+            <p className="hp-menu__empty">{empty}</p>
+          )}
+        </div>
+      )}
+    </span>
+  );
+}
+
 /** Modal dialog with Escape-to-close and initial focus inside. */
 export function Modal({
   title,

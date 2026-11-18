@@ -42,6 +42,7 @@ export interface LiveDeps {
   browserInfo?: () => BrowserInfo;
   git?: { health(): GitHealth; syncNow(): Promise<GitHealth> };
   rehearse?: (platform: PlatformId, input: RehearsalInput) => Promise<RehearsalResult>;
+  reverify?: (targetId: number) => Promise<'published' | 'unverified'>;
 }
 import { inboxIdSchema, inboxOpenSchema, profileUrlSchema, targetIdSchema } from '../../shared/ipc';
 import { SETTING_KEYS } from '../inbox/service';
@@ -312,6 +313,8 @@ export function registerHandlers(
   });
   handle('publish-now', (raw) => {
     const { targetId } = targetIdSchema.parse(raw);
+    if (db.prepare("SELECT value FROM settings WHERE key='publishing.paused'").pluck().get() === 'true')
+      throw new Error('Publishing is paused. Resume publishing on the Queue screen first.');
     const postId = db.prepare('SELECT post_id FROM post_targets WHERE id=?').pluck().get(targetId);
     // Due now: the next scheduler tick (≤ 30 s) picks it up, still subject to cooldowns and caps.
     const now = new Date().toISOString();
@@ -336,6 +339,11 @@ export function registerHandlers(
       platform,
     );
     return identity;
+  });
+  handle('reverify', async (raw) => {
+    const { targetId } = targetIdSchema.parse(raw);
+    if (!live.reverify) throw new Error('Verification is not available');
+    return live.reverify(targetId);
   });
   handle('rehearse', async (raw) => {
     const { platform } = accountConnectSchema.parse(raw);

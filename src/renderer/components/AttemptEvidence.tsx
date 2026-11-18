@@ -14,10 +14,12 @@ export type EvidenceAttempt = Fields<
 interface AttemptEvidenceProps {
   attempt: EvidenceAttempt;
   open?: boolean;
+  /** Queue rows title the box “Attempt 2 · step log”; History shows the attempt time. */
+  label?: string;
 }
 
 /** One publish attempt: step log, permalink and proof screenshot (loaded on demand). Used by Queue and History. */
-export function AttemptEvidence({ attempt, open }: AttemptEvidenceProps) {
+export function AttemptEvidence({ attempt, open, label }: AttemptEvidenceProps) {
   const [image, setImage] = useState('');
   const [error, setError] = useState('');
   const steps = parseSteps(attempt.step_log_json);
@@ -32,8 +34,14 @@ export function AttemptEvidence({ attempt, open }: AttemptEvidenceProps) {
   return (
     <details className="attempt-details" open={open} onToggle={(event) => void loadScreenshot(event)}>
       <summary>
-        <span>{formatWhen(attempt.started_at, { withDay: true })}</span>
-        <StatusPill status={attempt.outcome ?? 'unknown'} />
+        <span>{label ?? formatWhen(attempt.started_at, { withDay: true })}</span>
+        {label ? (
+          <time className="attempt-details__when" dateTime={attempt.started_at}>
+            {formatWhen(attempt.started_at, { withDay: true })}
+          </time>
+        ) : (
+          <StatusPill status={attempt.outcome ?? 'unknown'} />
+        )}
         {attempt.error_class && <code>{attempt.error_class}</code>}
       </summary>
       <div className="attempt-details__body">
@@ -49,6 +57,9 @@ export function AttemptEvidence({ attempt, open }: AttemptEvidenceProps) {
             </Button>
           )}
           {image && <img src={image} alt={`Publish attempt ${attempt.id} screenshot`} />}
+          {attempt.screenshot_path && (
+            <code className="attempt-details__file">{attempt.screenshot_path.split(/[\\/]/).pop()}</code>
+          )}
           {error && <p className="hp-callout hp-callout--danger">{error}</p>}
         </div>
       </div>

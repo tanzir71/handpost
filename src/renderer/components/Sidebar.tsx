@@ -1,4 +1,13 @@
-import { CalendarDays, History, Inbox, ListOrdered, PenLine, PlugZap, Settings2 } from 'lucide-react';
+import {
+  CalendarDays,
+  CircleUserRound,
+  Clock3,
+  History,
+  Inbox,
+  Lock,
+  PenLine,
+  SlidersHorizontal,
+} from 'lucide-react';
 import type { InboxHealth } from '../../shared/inbox-types';
 import { relative, shortPath } from '../lib/format';
 import type { Screen } from '../hooks/useRoute';
@@ -8,10 +17,10 @@ const ITEMS = [
   ['inbox', 'Inbox', Inbox],
   ['compose', 'Compose', PenLine],
   ['calendar', 'Calendar', CalendarDays],
-  ['queue', 'Queue', ListOrdered],
-  ['accounts', 'Accounts', PlugZap],
+  ['queue', 'Queue', Clock3],
+  ['accounts', 'Accounts', CircleUserRound],
   ['history', 'History', History],
-  ['settings', 'Settings', Settings2],
+  ['settings', 'Settings', SlidersHorizontal],
 ] as const;
 
 interface SidebarProps {
@@ -20,11 +29,12 @@ interface SidebarProps {
   health: InboxHealth | null;
   /** Inbox badge: held + rejected today. */
   inboxCount: number;
-  queueAttention: number;
+  /** Queue badge: posts waiting to publish. */
+  queueCount: number;
 }
 
 /** Figma App/Sidebar 6:8 — lockup, nav, spacer, watcher card, privacy line. */
-export function Sidebar({ screen, onNavigate, health, inboxCount, queueAttention }: SidebarProps) {
+export function Sidebar({ screen, onNavigate, health, inboxCount, queueCount }: SidebarProps) {
   const dot = health?.state ?? 'warn';
   const watcherText = !health
     ? 'Starting the inbox watcher…'
@@ -46,8 +56,8 @@ export function Sidebar({ screen, onNavigate, health, inboxCount, queueAttention
             label={label}
             active={screen === id}
             onClick={() => onNavigate(id)}
-            {...(id === 'inbox' && inboxCount ? { count: inboxCount, attention: true } : {})}
-            {...(id === 'queue' && queueAttention ? { count: queueAttention, attention: true } : {})}
+            {...(id === 'inbox' && inboxCount ? { count: inboxCount, attention: screen === id } : {})}
+            {...(id === 'queue' && queueCount ? { count: queueCount, attention: screen === id } : {})}
           />
         ))}
       </nav>
@@ -81,7 +91,9 @@ export function Sidebar({ screen, onNavigate, health, inboxCount, queueAttention
           </small>
         )}
       </section>
-      <p className="sidebar__privacy">Local-only · no telemetry</p>
+      <p className="sidebar__privacy">
+        <Lock size={13} aria-hidden="true" /> Local-only · no telemetry
+      </p>
     </aside>
   );
 }

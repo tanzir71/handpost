@@ -1,11 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Check, FileJson, FolderOpen, PenLine, Search, X, XCircle } from 'lucide-react';
+import { Check, FileJson, FolderOpen, PenLine, Search, TriangleAlert, X } from 'lucide-react';
 import { capabilities } from '../../shared/capabilities';
 import type { InboxListItem } from '../../shared/inbox-types';
 import type { PlatformId } from '../../shared/types';
 import { handpostApi } from '../lib/api';
 import { INBOX_FILTERS, matchesFilter, matchesQuery, type InboxFilter } from '../lib/inbox-filters';
-import { formatWhen, JITTER_NOTE, shortPath } from '../lib/format';
+import {
+  dayLabel,
+  formatDayTime,
+  formatReceived,
+  formatTime,
+  JITTER_NOTE,
+  shortPath,
+  shortStamp,
+} from '../lib/format';
 import {
   AirmailStripe,
   Button,
@@ -25,6 +33,36 @@ const ROW_HEIGHT = 76;
 const VIRTUALIZE_ABOVE = 200;
 const TRUST_SENTENCE =
   'Anything that can write to the inbox folder can publish to your connected accounts. Keep the folder on this computer, or in a sync service you fully control.';
+
+/** The first line of a post, for one-line rows and the receipt title. */
+function firstLine(text: string | null | undefined): string {
+  return (
+    (text ?? '')
+      .split(/\r?\n/)
+      .find((line) => line.trim())
+      ?.trim() ?? ''
+  );
+}
+function postTitle(item: InboxListItem): string {
+  const line = firstLine(item.text);
+  // “Tip #47 — Schedule posts from a folder” → “Schedule posts from a folder”, when what follows reads as a title.
+  const rest = line.replace(/^[^—–]{1,24}\s[—–]\s/, '');
+  const titled = /^\p{Lu}/u.test(rest) ? rest : line;
+  const sentence = titled.match(/^.{12,}?[.!?](?=\s|$)/u)?.[0] ?? titled;
+  return sentence || item.id;
+}
+const SOURCE_NAMES: Record<string, string> = {
+  claude: 'Claude scheduled task',
+  codex: 'Codex',
+  git: 'Git',
+  manual: 'Manual',
+};
+function sourceDescription(source: string | null): string {
+  if (!source) return 'not given';
+  const [tool = '', ...rest] = source.split(':');
+  const name = SOURCE_NAMES[tool];
+  return name ? [name, rest.join(':')].filter(Boolean).join(' · ') : source;
+}
 
 function sessionValue(key: string, fallback: string): string {
   try {
@@ -72,7 +110,8 @@ export function Inbox({ items, settings, onChanged, onEdit, onOpenAutomation }: 
     () => items.filter((item) => matchesFilter(item, filter) && matchesQuery(item, query)),
     [items, filter, query],
   );
-  const selected = rows.find((row) => row.key === selectedKey) ?? null;
+  // Like Figma 6:101, the receipt panel is open on the first row until another is chosen.
+  const selected = rows.find((row) => row.key === selectedKey) ?? rows[0] ?? null;
 
   const chooseFilter = (next: InboxFilter) => {
     setFilter(next);
@@ -103,13 +142,14 @@ export function Inbox({ items, settings, onChanged, onEdit, onOpenAutomation }: 
           <p className="eyebrow">Automation inbox</p>
           <h1 className="t-display-m">Inbox</h1>
           <p className="secondary-text">
-            Posts from Claude, Codex and scripts. Every file ends with a receipt.
+            Posts that arrive as files from Claude scheduled tasks, Codex, or anything that can write to a
+            folder.
           </p>
         </div>
         <div className="screen-header__actions">
-          <span className="inline-toggle">
-            <Toggle checked={autoSchedule} onChange={(next) => void setAuto(next)} label="Auto-schedule" />
+          <span className="inline-toggle inline-toggle--boxed">
             <span aria-hidden="true">Auto-schedule</span>
+            <Toggle checked={autoSchedule} onChange={(next) => void setAuto(next)} label="Auto-schedule" />
           </span>
           <Button icon={FolderOpen} onClick={() => void handpostApi.inboxOpen({ target: 'inbox' })}>
             Open folder
@@ -174,7 +214,7 @@ export function Inbox({ items, settings, onChanged, onEdit, onOpenAutomation }: 
             <input
               type="search"
               value={query}
-              placeholder="Search id, text, source"
+              placeholder="Search inbox"
               onChange={(event) => {
                 setQuery(event.target.value);
                 remember('handpost.inbox.query', event.target.value);
@@ -188,7 +228,7 @@ export function Inbox({ items, settings, onChanged, onEdit, onOpenAutomation }: 
           {message}
         </p>
       )}
-      <div className={selected ? 'split' : 'split split--single'}>
+      <div className={selected ? 'split split--inbox' : 'split split--single'}>
         <section className="hp-card split__main" aria-label="Inbox items">
           {items.length === 0 ? (
             <EmptyState
@@ -218,7 +258,6 @@ export function Inbox({ items, settings, onChanged, onEdit, onOpenAutomation }: 
               }
               onReject={() => act(() => handpostApi.inboxReject(selected.id), `${selected.id} rejected`)}
               onEdit={selected.postId ? () => onEdit(selected.postId!) : undefined}
-              onClose={() => setSelectedKey(null)}
             />
           </aside>
         )}
@@ -272,7 +311,7 @@ function InboxList({
       <div className="inbox-list__head" aria-hidden="true">
         <span>Source</span>
         <span>Post</span>
-        <span>Platforms</span>
+        <span>Targets</span>
         <span>When</span>
         <span>Status</span>
       </div>
@@ -288,6 +327,7 @@ function InboxList({
               aria-selected={row.key === selectedKey}
               tabIndex={row.key === selectedKey || (selectedKey === null && index === 0) ? 0 : -1}
               className="inbox-row"
+              data-state={row.state}
               style={
                 virtual
                   ? { position: 'absolute', top: index * ROW_HEIGHT, left: 0, right: 0, height: ROW_HEIGHT }
@@ -312,17 +352,27 @@ function InboxList({
                 <code>{sourceTask(row.source)}</code>
               </span>
               <span className="inbox-row__post">
-                <span className="clamp-2">{row.text ?? row.receipt.errors[0]?.message ?? row.id}</span>
+                <span className="inbox-row__text">{firstLine(row.text) || row.id}</span>
                 <code>
-                  {row.fileName} · {formatWhen(row.receivedAt)}
+                  {row.fileName} · {shortStamp(row.receivedAt)}
                 </code>
+                {row.state === 'rejected' && row.receipt.errors[0] && (
+                  <span className="inbox-row__error">
+                    <TriangleAlert size={12} aria-hidden="true" />
+                    {row.receipt.errors[0].code}: {row.receipt.errors[0].message}
+                  </span>
+                )}
               </span>
               <PlatformBadges platforms={row.receipt.targets.map((target) => target.platform)} />
               <span className="inbox-row__when">
-                {when ? (
+                {row.state === 'duplicate' ? (
                   <>
-                    {formatWhen(when)}
-                    <small>{JITTER_NOTE}</small>
+                    —<small>same id</small>
+                  </>
+                ) : when ? (
+                  <>
+                    {dayLabel(when)}
+                    <small>{formatTime(when)}</small>
                   </>
                 ) : (
                   <span className="muted">—</span>
@@ -375,61 +425,72 @@ export function ReceiptPanel({
 }) {
   const { receipt } = item;
   const reason = why(item);
-  const checks: Array<{ tone: 'ok' | 'warn' | 'danger'; text: string }> = [
+  const checks: Array<{ tone: 'ok' | 'warn' | 'danger'; text: string }> = [];
+  const total = receipt.targets.length;
+  if (!receipt.errors.length && item.state !== 'duplicate') {
+    const offline = receipt.warnings.filter((issue) => issue.code === 'platform_not_connected').length;
+    const overCap = receipt.warnings.some((issue) => issue.code === 'over_daily_cap');
+    checks.push({ tone: 'ok', text: 'Schema handpost/1 valid' });
+    if (total)
+      checks.push({
+        tone: offline ? 'warn' : 'ok',
+        text: `${total - offline} of ${total} platform${total === 1 ? '' : 's'} connected`,
+      });
+    checks.push(
+      overCap
+        ? { tone: 'warn', text: 'Over a daily cap — the scheduler will defer it' }
+        : { tone: 'ok', text: 'Within daily caps and cooldowns' },
+    );
+  }
+  checks.push(
     ...receipt.errors.map((issue) => ({
       tone: 'danger' as const,
       text: `${issue.code}${issue.path ? ` at ${issue.path}` : ''}: ${issue.message}`,
     })),
-    ...receipt.warnings.map((issue) => ({ tone: 'warn' as const, text: issue.message })),
-  ];
-  if (!receipt.errors.length && item.state !== 'duplicate') {
-    checks.unshift(
-      { tone: 'ok', text: 'Protocol v1 schema' },
-      { tone: 'ok', text: 'Content fits every platform' },
-    );
-  }
+    ...receipt.warnings
+      .filter((issue) => issue.code !== 'platform_not_connected' && issue.code !== 'over_daily_cap')
+      .map((issue) => ({ tone: 'warn' as const, text: issue.message })),
+  );
   const canDecide = item.state === 'held';
   const canReject = item.postId !== null && ['held', 'scheduled', 'draft'].includes(item.state);
   return (
-    <section className="hp-card receipt-panel" aria-labelledby="receipt-title">
+    <section className="hp-card receipt-panel" aria-labelledby="receipt-id">
       <AirmailStripe />
       <div className="hp-card__body hp-receipt">
         <div className="receipt-panel__title">
-          <div>
-            <p className="eyebrow">Receipt</p>
-            <h2 id="receipt-title" className="t-heading-m receipt-panel__id">
-              {receipt.id}
-            </h2>
-          </div>
+          <p className="hp-section-label receipt-panel__eyebrow">
+            Receipt · <span id="receipt-id">{receipt.id}</span>
+          </p>
           <span className="receipt-panel__status">
             <StatusPill status={item.state} />
             {onClose && <Button kind="ghost" size="s" icon={X} label="Close receipt" onClick={onClose} />}
           </span>
         </div>
+        <h2 className="t-heading-m receipt-panel__heading">{postTitle(item)}</h2>
         {reason && <p className={`hp-callout hp-callout--${reason.tone}`}>{reason.text}</p>}
         <dl>
           <dt>Source</dt>
-          <dd>{receipt.source ?? 'not given'}</dd>
+          <dd className="sans">{sourceDescription(receipt.source)}</dd>
           <dt>File</dt>
           <dd>{item.storedPath ?? item.fileName}</dd>
           <dt>Received</dt>
-          <dd>{formatWhen(item.receivedAt, { withDay: true })}</dd>
+          <dd className="sans">{formatReceived(item.receivedAt)}</dd>
           <dt>Post id</dt>
-          <dd>{item.postId ?? '—'}</dd>
+          <dd>{receipt.id}</dd>
         </dl>
-        <div>
-          <p className="hp-section-label">Checks</p>
+        <div className="receipt-panel__section">
+          <p className="receipt-panel__label">Checks</p>
           {checks.length ? <Checks items={checks} /> : <p className="muted t-body-s">No checks recorded.</p>}
         </div>
         {receipt.targets.length > 0 && (
-          <div>
-            <p className="hp-section-label">Will publish</p>
+          <div className="receipt-panel__section">
+            <p className="receipt-panel__label">Will publish</p>
             <ul className="hp-will-publish">
               {receipt.targets.map((target) => (
                 <li key={target.platform}>
                   <PlatformBadge platform={target.platform} />
                   <span>{capabilities[target.platform as PlatformId]?.label ?? target.platform}</span>
-                  {target.url ? (
+                  {target.url && (
                     <a
                       href={target.url}
                       onClick={(event) => {
@@ -439,13 +500,13 @@ export function ReceiptPanel({
                     >
                       View post
                     </a>
-                  ) : (
-                    <StatusPill status={target.status} />
                   )}
                   <time dateTime={target.scheduled_at ?? undefined}>
-                    {target.scheduled_at
-                      ? `${formatWhen(target.scheduled_at)} ${JITTER_NOTE}`
-                      : 'not scheduled'}
+                    {target.status === 'cancelled'
+                      ? 'cancelled'
+                      : target.scheduled_at
+                        ? `${formatDayTime(target.scheduled_at)} ${JITTER_NOTE.replace(' ', '')}`
+                        : 'not scheduled'}
                   </time>
                 </li>
               ))}
@@ -469,21 +530,24 @@ export function ReceiptPanel({
               confirmLabel="Reject"
               onConfirm={onReject}
               trigger={(open) => (
-                <Button kind="danger" icon={XCircle} onClick={open}>
+                <Button kind="ghost" icon={X} onClick={open}>
                   Reject
                 </Button>
               )}
             />
           )}
+        </div>
+        <p className="receipt-panel__file">
           <Button
             kind="ghost"
+            size="s"
             icon={FileJson}
             onClick={() => void handpostApi.inboxOpen({ target: 'receipt', id: receipt.id })}
           >
             Receipt file
           </Button>
-        </div>
-        <p className="t-mono-s muted">{shortPath(receipt.file)}</p>
+          <code>{shortPath(receipt.file)}</code>
+        </p>
       </div>
     </section>
   );

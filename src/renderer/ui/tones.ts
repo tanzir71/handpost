@@ -31,21 +31,19 @@ export function toneFor(status: string): Tone {
   return TONES[status] ?? 'neutral';
 }
 
+/** Pill wording follows the Figma frames: lowercase, plain words. */
 const LABELS: Record<string, string> = {
-  held: 'Held for review',
-  needs_login: 'Needs login',
-  needs_attention: 'Needs attention',
-  waiting_media: 'Waiting for media',
-  unknown: 'Not connected',
-  not_connected: 'Not connected',
-  ok: 'Connected',
+  held: 'held for review',
+  ok: 'connected',
+  unknown: 'not connected',
+  not_connected: 'not connected',
+  waiting_media: 'waiting for media',
 };
 
 export function statusLabel(status: string): string {
-  return LABELS[status] ?? status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, ' ');
+  return LABELS[status] ?? status.replace(/_/g, ' ');
 }
 
-/** Mono monograms for platform badges — never official logos (DESIGN §4). */
 export const MONOGRAMS: Record<PlatformId, string> = {
   mock: 'mk',
   x: '𝕏',

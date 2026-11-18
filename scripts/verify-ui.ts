@@ -12,7 +12,7 @@ import { createServer } from 'vite';
 
 const SCREENS = [
   ['inbox', 'Inbox'],
-  ['compose', 'Compose'],
+  ['compose', 'New post'],
   ['calendar', null],
   ['queue', 'Queue'],
   ['accounts', 'Accounts'],
@@ -67,7 +67,7 @@ try {
     await page.goto(`${base}/#/inbox`, { waitUntil: 'networkidle' });
     await page.getByRole('button', { name: /Held for review/ }).click();
     await page.getByRole('option').first().click();
-    await page.getByRole('heading', { name: 'launch-week-day-3' }).waitFor();
+    await page.getByRole('region', { name: 'launch-week-day-3' }).waitFor();
     await page.screenshot({ path: `${OUT}/inbox-receipt-${scheme}.png` });
     // Settings tabs.
     for (const tab of ['Automation', 'Data & export', 'About']) {

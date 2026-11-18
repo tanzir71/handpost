@@ -71,6 +71,7 @@ export const BOOLEAN_SETTINGS = [
   'git.enabled',
   'git.pushReceipts',
   'inbox.trustConfirmed',
+  'publishing.paused',
 ] as const;
 export const settingSchema = z.union([
   z.object({ key: z.enum(BOOLEAN_SETTINGS), value: z.enum(['true', 'false']) }),

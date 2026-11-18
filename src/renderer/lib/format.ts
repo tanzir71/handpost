@@ -65,3 +65,56 @@ export function shortPath(path: string | null | undefined): string {
 export function toLocalInput(date: Date): string {
   return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 }
+
+const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
+const shortDay = (date: Date) =>
+  date.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }).replace(',', '');
+
+/** “Today”, “Tomorrow” or “Fri 20 Nov” (the first line of the When column in Figma 6:101). */
+export function dayLabel(iso: string, now = new Date()): string {
+  const date = new Date(iso);
+  const tomorrow = new Date(now);
+  tomorrow.setDate(now.getDate() + 1);
+  if (sameDay(date, now)) return 'Today';
+  if (sameDay(date, tomorrow)) return 'Tomorrow';
+  return shortDay(date);
+}
+
+/** “Today · Wed 18 Nov”, “Tomorrow · Thu 19 Nov”, “Fri 20 Nov”: Queue day headers (Figma 6:264). */
+export function dayTitle(iso: string, now = new Date()): string {
+  const label = dayLabel(iso, now);
+  const day = shortDay(new Date(iso));
+  return label === day ? day : `${label} · ${day}`;
+}
+
+/** “Fri 20 Nov · 09:30”, as in the receipt's Will publish list. */
+export function formatDayTime(iso: string): string {
+  return `${shortDay(new Date(iso))} · ${formatTime(iso)}`;
+}
+
+/** “Wed 18 Nov · 09:14:07”: a receipt's received time, to the second. */
+export function formatReceived(iso: string): string {
+  const date = new Date(iso);
+  return `${shortDay(date)} · ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
+}
+
+/** A time for today, otherwise the short weekday (“09:14”, “Tue”). */
+export function shortStamp(iso: string, now = new Date()): string {
+  const date = new Date(iso);
+  return sameDay(date, now) ? formatTime(iso) : date.toLocaleDateString(undefined, { weekday: 'short' });
+}
+
+/** “just now”, “12 min ago”, “3 h ago”, “yesterday”, “4 days ago” (Accounts → Last verified). */
+export function ago(iso: string, now = new Date()): string {
+  const diff = now.getTime() - new Date(iso).getTime();
+  if (diff < 60_000) return 'just now';
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} min ago`;
+  const date = new Date(iso);
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (sameDay(date, now)) return `${Math.floor(diff / 3_600_000)} h ago`;
+  if (sameDay(date, yesterday)) return 'yesterday';
+  const midnight = new Date(now);
+  midnight.setHours(0, 0, 0, 0);
+  return `${Math.ceil((midnight.getTime() - date.getTime()) / 86_400_000)} days ago`;
+}

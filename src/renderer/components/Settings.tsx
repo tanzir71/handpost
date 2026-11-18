@@ -1,23 +1,25 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import {
-  BookOpen,
   Coffee,
   Copy,
   Download,
+  ExternalLink,
   FileCode2,
-  FolderOpen,
+  Folder,
   FolderSearch,
+  GitBranch,
   Github,
+  Sparkles,
   Upload,
 } from 'lucide-react';
 import type { AppInfo } from '../../shared/api';
 import type { AutomationInfo, GitHealthView, WriterRow } from '../../shared/inbox-types';
 import type { CsvPlanRow, SettingRow } from '../../shared/rows';
 import { handpostApi } from '../lib/api';
-import { relative, shortPath } from '../lib/format';
+import { dayLabel, formatTime, relative, shortPath } from '../lib/format';
 import { COFFEE_URL, REPO_URL } from '../lib/links';
 import type { ThemeChoice } from '../hooks/useTheme';
-import { Button, Card, Modal, Segmented, SourceChip, Tabs, ToggleRow, sourceTask } from '../ui';
+import { Button, Card, Modal, Segmented, SourceChip, Tabs, Toggle, ToggleRow, sourceTask } from '../ui';
 
 export type SettingsTab = 'general' | 'automation' | 'data' | 'about';
 const TABS: Array<{ id: SettingsTab; label: string }> = [
@@ -56,7 +58,6 @@ export function Settings({ settings, onChanged, tab, onTab, remoteSource }: Sett
         <div>
           <p className="eyebrow">Preferences</p>
           <h1 className="t-display-m">Settings</h1>
-          <p className="secondary-text">Handpost stays quiet and local by default.</p>
         </div>
       </header>
       <Tabs tabs={TABS} active={current} onChange={choose} label="Settings sections" />
@@ -199,10 +200,15 @@ function Automation({
     <div className="settings-split">
       <div className="settings-grid">
         <Card title="Inbox folder">
+          <p className="t-body-s secondary-text">
+            Handpost watches this folder. Anything that can write a file here — a Claude scheduled task,
+            Codex, a script — can schedule a post.
+          </p>
           <div className="folder-row">
-            <code className="hp-input folder-row__path" title={folder}>
-              {shortPath(folder)}
-            </code>
+            <span className="hp-input folder-row__path" title={folder}>
+              <Folder size={16} aria-hidden="true" />
+              <span>{folder}</span>
+            </span>
             <Button
               icon={FolderSearch}
               onClick={async () => {
@@ -214,24 +220,28 @@ function Automation({
             >
               Change…
             </Button>
-            <Button icon={FolderOpen} onClick={() => void handpostApi.inboxOpen({ target: 'folder' })}>
+            <Button
+              kind="ghost"
+              icon={ExternalLink}
+              onClick={() => void handpostApi.inboxOpen({ target: 'folder' })}
+            >
               Open
             </Button>
           </div>
           <pre className="folder-tree t-mono-s" aria-label="Folder layout">
-            {`${shortPath(folder)}
-├─ inbox/              writers drop .md / .json here
-├─ processed/YYYY-MM/  accepted files
-├─ rejected/           + <file>.error.json
-├─ receipts/<id>.json  what happened to each post
-└─ handpost.status.json`}
+            {`${folder.split(/[\\/]/).filter(Boolean).pop() ?? 'Handpost'}/
+├─ inbox/                drop .md or .json here (write *.tmp, then rename)
+├─ processed/YYYY-MM/    accepted files
+├─ rejected/             with <name>.error.json beside each
+├─ receipts/             <id>.json — updated until published
+└─ handpost.status.json  accounts, caps, free slots, upcoming`}
           </pre>
         </Card>
-        <Card title="Behaviour">
+        <Card>
           <div>
             <ToggleRow
-              title="Auto-schedule"
-              detail="Valid files are scheduled without waiting. Off: everything waits in Inbox for approval."
+              title="Auto-schedule valid files"
+              detail="Off holds every arriving file in Inbox until you approve it. A file can always ask for review with mode: review."
               checked={value('inbox.autoSchedule', 'false') === 'true'}
               onChange={(next) => {
                 if (next && value('inbox.trustConfirmed', 'false') !== 'true') setConfirming(true);
@@ -239,20 +249,20 @@ function Automation({
               }}
             />
             <ToggleRow
-              title="Write receipts & status"
-              detail="receipts/<id>.json and handpost.status.json for writers to read."
+              title="Write receipts and status file"
+              detail="Lets the next Claude or Codex run read back what was published, failed or rejected."
               checked={value('inbox.writeStatus', 'true') === 'true'}
               onChange={(next) => void save('inbox.writeStatus', String(next))}
             />
             <ToggleRow
-              title="Include post text in status"
-              detail="Adds a 120-character preview per upcoming post. Turn off for synced folders."
+              title="Include post text in status file"
+              detail="A 120-character preview per upcoming post. Turn off if this folder syncs to a cloud drive you don’t fully trust."
               checked={value('inbox.statusPreviews', 'true') === 'true'}
               onChange={(next) => void save('inbox.statusPreviews', String(next))}
             />
             <ToggleRow
               title="Allow media outside the inbox folder"
-              detail="Off protects files like ~/.ssh from being posted by a crafted file."
+              detail="Off means a file can only attach images and video stored inside inbox/ — never files like ~/.ssh."
               checked={value('inbox.allowOutsideMedia', 'false') === 'true'}
               onChange={(next) => void save('inbox.allowOutsideMedia', String(next))}
             />
@@ -261,14 +271,31 @@ function Automation({
         {remoteSource ?? <RemoteSource value={value} save={save} />}
       </div>
       <aside className="settings-grid">
-        <Card title="Connect a Claude scheduled task" stripe>
-          <ol className="steps">
+        <Card
+          title={
+            <span className="card-title-icon">
+              <Sparkles size={18} aria-hidden="true" className="brand-red" />
+              Connect a Claude scheduled task
+            </span>
+          }
+          stripe
+        >
+          <ol className="steps steps--numbered">
             <li>
-              Add the <code>handpost-inbox</code> skill to Claude (Handpost also put a copy in your folder as{' '}
-              <code>HANDPOST_WRITER.md</code>).
+              <span>
+                Add the <code>handpost-inbox</code> skill to Claude (bundled in <code>integrations/</code>; a
+                copy is in your folder as <code>HANDPOST_WRITER.md</code>).
+              </span>
             </li>
-            <li>Create a scheduled task on this computer with the Handpost folder attached.</li>
-            <li>Paste this prompt and adjust the topic. Start with mode: review until you trust it.</li>
+            <li>
+              <span>Create a scheduled task that runs on this computer, with this folder attached.</span>
+            </li>
+            <li>
+              <span>
+                Paste the prompt below — start with mode: review until you trust it. Codex: point it at{' '}
+                <code>AGENTS.md</code> instead.
+              </span>
+            </li>
           </ol>
           <pre className="hp-code">{info?.writerPrompt ?? '…'}</pre>
           <div className="button-row">
@@ -281,7 +308,8 @@ function Automation({
               Copy prompt
             </Button>
             <Button
-              icon={BookOpen}
+              kind="ghost"
+              icon={ExternalLink}
               onClick={() =>
                 void handpostApi.openExternal(
                   info?.protocolUrl ?? `${REPO_URL}/blob/master/docs/INBOX_PROTOCOL.md`,
@@ -291,6 +319,7 @@ function Automation({
               Inbox protocol
             </Button>
             <Button
+              kind="ghost"
               icon={FileCode2}
               onClick={async () => {
                 const path = await handpostApi.copyAgents();
@@ -310,30 +339,28 @@ function Automation({
           {writers.length === 0 ? (
             <p className="t-body-s muted">No files have arrived yet.</p>
           ) : (
-            <table className="hp-table writers">
-              <thead>
-                <tr>
-                  <th scope="col">Source</th>
-                  <th scope="col">Task</th>
-                  <th scope="col">Files</th>
-                  <th scope="col">Last seen</th>
-                </tr>
-              </thead>
-              <tbody>
-                {writers.map((writer) => (
-                  <tr key={writer.source}>
-                    <td>
-                      <SourceChip source={writer.source} />
-                    </td>
-                    <td>
-                      <code>{sourceTask(writer.source)}</code>
-                    </td>
-                    <td className="t-mono-s">{writer.files}</td>
-                    <td className="t-mono-s">{relative(writer.lastSeen)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <ul className="writers">
+              {writers.map((writer) => {
+                const day = dayLabel(writer.lastSeen);
+                const when =
+                  day === 'Today'
+                    ? `last today ${formatTime(writer.lastSeen)}`
+                    : day === 'Tomorrow'
+                      ? relative(writer.lastSeen)
+                      : relative(writer.lastSeen).endsWith('1 d ago')
+                        ? 'yesterday'
+                        : new Date(writer.lastSeen).toLocaleDateString(undefined, { weekday: 'short' });
+                return (
+                  <li key={writer.source}>
+                    <SourceChip source={writer.source} />
+                    <code>{sourceTask(writer.source)}</code>
+                    <span>
+                      {writer.files} file{writer.files === 1 ? '' : 's'} · {when}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
           )}
         </Card>
       </aside>
@@ -568,13 +595,27 @@ function RemoteSource({ value, save }: { value: ValueFn; save: SaveFn }) {
     }
   };
   return (
-    <Card title="Remote source (Git, optional)">
+    <Card
+      title={
+        <span className="card-title-icon">
+          <GitBranch size={18} aria-hidden="true" />
+          Git repository · optional
+        </span>
+      }
+      actions={
+        <Toggle
+          checked={enabled}
+          label="Pull this repository"
+          {...(value('git.url', '') ? {} : { disabled: true })}
+          onChange={(next) => void run(() => save('git.enabled', String(next)))}
+        />
+      }
+    >
       <p className="t-body-s secondary-text">
-        For writers that run in the cloud and cannot reach this computer: Handpost clones one Git repository
-        into
-        <code> .sources/</code> with your existing Git credentials, pulls every 5 minutes and reads its{' '}
-        <code>inbox/</code>. It is the only network access besides the platforms, and it is off unless you
-        turn it on.
+        For cloud-run tasks that can’t reach this computer. Handpost clones one repository into{' '}
+        <code>.sources/</code> with your existing Git credentials, pulls it every 5 minutes and reads its{' '}
+        <code>inbox/</code>; it never pushes unless you turn on “Push receipts back”. It is the only network
+        access besides the platforms, and it is off unless you turn it on.
       </p>
       <form
         className="folder-row"
@@ -596,13 +637,6 @@ function RemoteSource({ value, save }: { value: ValueFn; save: SaveFn }) {
         </Button>
       </form>
       <div>
-        <ToggleRow
-          title="Pull this repository"
-          detail="Clones on first use, then pulls every 5 minutes (60 s timeout). Files in the clone are never moved."
-          checked={enabled}
-          disabled={!value('git.url', '')}
-          onChange={(next) => void run(() => save('git.enabled', String(next)))}
-        />
         <ToggleRow
           title="Push receipts back"
           detail="Commits receipts/<id>.json for this repository's posts and pushes them, so cloud writers can read results."

@@ -33,6 +33,7 @@ const api: HandpostApi = {
   breakers: () => ipcRenderer.invoke('breakers'),
   cancelTarget: (v) => ipcRenderer.invoke('cancel-target', v),
   publishNow: (v) => ipcRenderer.invoke('publish-now', v),
+  reverify: (v) => ipcRenderer.invoke('reverify', v),
   appInfo: () => ipcRenderer.invoke('app-info'),
   browserInfo: () => ipcRenderer.invoke('browser-info'),
   setProfileUrl: (v) => ipcRenderer.invoke('set-profile-url', v),

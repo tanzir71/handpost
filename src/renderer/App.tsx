@@ -13,7 +13,6 @@ import { useRoute } from './hooks/useRoute';
 import { useTheme, type ThemeChoice } from './hooks/useTheme';
 
 const Gallery = import.meta.env.DEV ? lazy(() => import('./components/Gallery')) : null;
-const ATTENTION = ['failed', 'unverified', 'needs_attention', 'needs_login', 'manual'];
 
 export function App() {
   const { data, loading, error, refresh } = useSnapshot();
@@ -34,8 +33,13 @@ export function App() {
       </Suspense>
     );
   const inboxCount = (inbox.health?.held ?? 0) + (inbox.health?.rejectedToday ?? 0);
-  const queueAttention = data.targets.filter((target) => ATTENTION.includes(target.status)).length;
+  const queueCount = data.targets.filter((target) =>
+    ['scheduled', 'publishing'].includes(target.status),
+  ).length;
   const edit = (postId: number) => navigate('compose', postId);
+  const waiting: Record<string, number> = {};
+  for (const target of data.targets)
+    if (target.status === 'needs_login') waiting[target.platform] = (waiting[target.platform] ?? 0) + 1;
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main-content">
@@ -46,7 +50,7 @@ export function App() {
         onNavigate={(screen) => navigate(screen)}
         health={inbox.health}
         inboxCount={inboxCount}
-        queueAttention={queueAttention}
+        queueCount={queueCount}
       />
       <div className="content" id="main-content" tabIndex={-1}>
         {error && (
@@ -83,6 +87,7 @@ export function App() {
             inbox={inbox.items}
             onChanged={refreshAll}
             onEdit={edit}
+            settings={data.settings}
           />
         ) : route.screen === 'accounts' ? (
           <Accounts
@@ -90,6 +95,8 @@ export function App() {
             slots={data.slots}
             settings={data.settings}
             onChanged={refreshAll}
+            waiting={waiting}
+            onViewEvidence={() => navigate('history')}
           />
         ) : route.screen === 'history' ? (
           <Logs attempts={data.attempts} />

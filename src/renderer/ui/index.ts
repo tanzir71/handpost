@@ -9,6 +9,7 @@ export {
   Checks,
   ConfirmPopover,
   EmptyState,
+  MenuButton,
   Modal,
   StepLog,
   type StepLogEntry,

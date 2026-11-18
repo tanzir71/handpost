@@ -1,11 +1,17 @@
 import { useEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEvent } from 'react';
-import { CalendarCheck, ImagePlus, Save, Send, Timer } from 'lucide-react';
-import { capabilities, countText, postWarnings, validatePost } from '../../shared/capabilities';
+import { Clock3, FileText, Film, ImageIcon, ImagePlus, Plus, Send, X } from 'lucide-react';
+import {
+  capabilities,
+  countText,
+  FIRST_COMMENT_PLATFORMS,
+  postWarnings,
+  validatePost,
+} from '../../shared/capabilities';
 import { renderTemplate, templateVariables } from '../../shared/templates';
 import type { MediaInput, PlatformId } from '../../shared/types';
 import { handpostApi } from '../lib/api';
 import { JITTER_NOTE, timeZone, toLocalInput } from '../lib/format';
-import { Button, EmptyState, PlatformBadge, Segmented, Tabs } from '../ui';
+import { Button, EmptyState, MenuButton, PlatformBadge, Segmented, Tabs } from '../ui';
 
 type ScheduleMode = 'slot' | 'exact' | 'now';
 import type {
@@ -18,7 +24,7 @@ import type {
 } from '../../shared/rows';
 
 export interface ComposerProps {
-  accounts: Array<Fields<AccountRow, 'id' | 'platform'>>;
+  accounts: Array<Fields<AccountRow, 'id' | 'platform', 'display_name' | 'handle'>>;
   templates: TemplateRow[];
   posts?: Array<Fields<PostRow, 'id' | 'status' | 'base_text'>>;
   targets?: Array<
@@ -57,6 +63,32 @@ function decodeThreadParts(value: unknown): string[] {
   } catch {
     return [];
   }
+}
+
+function firstLine(text: string): string {
+  return (
+    text
+      .split('\n')
+      .find((line) => line.trim())
+      ?.trim()
+      .slice(0, 60) ?? ''
+  );
+}
+/** “1200 × 675 · 284 KB”, “0:30 · 4.2 MB”: what the media row knows about a file. */
+function mediaFacts(row: MediaRow): string {
+  const parts: string[] = [];
+  if (row.width && row.height) parts.push(`${row.width} × ${row.height}`);
+  if (row.duration_s)
+    parts.push(
+      `${Math.floor(row.duration_s / 60)}:${String(Math.round(row.duration_s % 60)).padStart(2, '0')}`,
+    );
+  if (row.size_bytes)
+    parts.push(
+      row.size_bytes >= 1_048_576
+        ? `${(row.size_bytes / 1_048_576).toFixed(1)} MB`
+        : `${Math.max(1, Math.round(row.size_bytes / 1024))} KB`,
+    );
+  return parts.join(' · ');
 }
 
 export function Composer({
@@ -478,42 +510,56 @@ export function Composer({
   const isSuccess = (value: string) =>
     ['saved', 'scheduled', 'attached', 'Added', 'loaded'].some((word) => value.includes(word));
   const fileName = (path: string) => path.split(/[\\/]/).pop() ?? path;
+  const drafts = posts.filter((post) => post.status === 'draft');
+  const mediaMax = selected.length
+    ? Math.min(...selected.map((platform) => capabilities[platform].maxMedia))
+    : 4;
+  const commentPlatforms = (activeTab === 'base' ? selected : [activeTab]).filter((platform) =>
+    FIRST_COMMENT_PLATFORMS.includes(platform),
+  );
+  const previewWhen =
+    scheduleMode === 'now'
+      ? 'now'
+      : scheduleMode === 'slot'
+        ? 'next slot'
+        : new Date(scheduledAt).toLocaleDateString(undefined, { weekday: 'short' });
+  const clear = () => {
+    resetAfterSchedule();
+    setMessage('');
+    setActiveTab('base');
+  };
   return (
     <main className="screen" onDrop={drop} onDragOver={(event) => event.preventDefault()} onPaste={paste}>
       <header className="screen-header">
         <div>
-          <p className="eyebrow">Create</p>
-          <h1 className="t-display-m">Compose</h1>
-          <p className="secondary-text">Write once, adjust per platform. Drop or paste media anywhere.</p>
+          <p className="eyebrow">Compose</p>
+          <h1 className="t-display-m">New post</h1>
+          <p className="secondary-text">
+            Write once, adjust per platform. Drafts, media and previews stay on this computer.
+          </p>
         </div>
-        <div className="screen-header__actions compose-start">
-          <label className="hp-field">
-            <span>Draft</span>
-            <select
-              value={postId && posts.some((post) => post.id === postId) ? String(postId) : ''}
-              onChange={(event) => chooseDraft(event.target.value)}
-            >
-              <option value="">Choose…</option>
-              {posts
-                .filter((post) => post.status === 'draft')
-                .map((post) => (
-                  <option key={post.id} value={post.id}>
-                    {post.base_text.slice(0, 40) || `Draft ${post.id}`}
-                  </option>
-                ))}
-            </select>
-          </label>
-          <label className="hp-field">
-            <span>Template</span>
-            <select defaultValue="" onChange={(event) => chooseTemplate(event.target.value)}>
-              <option value="">Choose…</option>
-              {templates.map((template) => (
-                <option key={template.id} value={template.id}>
-                  {template.name}
-                </option>
-              ))}
-            </select>
-          </label>
+        <div className="screen-header__actions">
+          {drafts.length > 0 && (
+            <MenuButton
+              kind="ghost"
+              label="Open draft"
+              items={drafts.map((post) => ({
+                id: String(post.id),
+                label: firstLine(post.base_text) || `Draft ${post.id}`,
+              }))}
+              onSelect={(id) => chooseDraft(id)}
+            />
+          )}
+          <MenuButton
+            label="Use template"
+            icon={FileText}
+            items={templates.map((template) => ({ id: String(template.id), label: template.name }))}
+            onSelect={chooseTemplate}
+            empty="No templates yet. Save one in Settings → Templates."
+          />
+          <Button kind="ghost" icon={X} onClick={clear}>
+            Clear
+          </Button>
         </div>
       </header>
       <div className="split split--compose">
@@ -553,7 +599,10 @@ export function Composer({
               onChange={setActiveTab}
               tabs={[
                 { id: 'base', label: 'Base text' },
-                ...selected.map((platform) => ({ id: platform, label: capabilities[platform].label })),
+                ...selected.map((platform) => ({
+                  id: platform,
+                  label: `${capabilities[platform].label} override`,
+                })),
               ]}
             />
             <label className="sr-only" htmlFor="post-text">
@@ -574,14 +623,19 @@ export function Composer({
                   : `Text just for ${capabilities[activeTab].label}`
               }
             />
-            <div className="compose__meta t-body-s secondary-text">
-              <span>
-                {activeTab === 'base'
-                  ? 'Used for every platform without its own text'
-                  : `${countText(activeTab, activeText)} / ${capabilities[activeTab].maxChars} characters`}
-              </span>
-            </div>
             <div className="validation-pills" aria-live="polite">
+              {(activeTab === 'base' ? selected : [activeTab]).map((platform) => {
+                const used = countText(platform, overrides[platform] ?? text);
+                const max = capabilities[platform].maxChars;
+                return (
+                  <span
+                    key={`count-${platform}`}
+                    className={`hp-pill hp-pill--${used > max ? 'danger' : 'ok'}`}
+                  >
+                    {capabilities[platform].label} · {used} / {max}
+                  </span>
+                );
+              })}
               {selected.flatMap((platform) =>
                 (errors[platform] ?? []).map((error) => (
                   <span className="hp-pill hp-pill--danger" key={`${platform}-${error}`}>
@@ -610,56 +664,96 @@ export function Composer({
                 </span>
               )}
             </div>
-            <div className="media-strip" aria-label="Media">
-              {media.map((row) => (
-                <div className="media-tile" key={row.id}>
-                  <span className="media-tile__kind t-mono-s">
-                    {row.kind} · {fileName(row.path)}
-                  </span>
-                  <input
-                    className="hp-input"
-                    aria-label={`Alt text for ${fileName(row.path)}`}
-                    value={
-                      activeTab === 'base'
-                        ? (row.alt_text ?? '')
-                        : String(activeOptions[`alt:${row.id}`] ?? row.alt_text ?? '')
-                    }
-                    placeholder={
-                      activeTab === 'base' ? 'Alt text' : `${capabilities[activeTab].label} alt-text override`
-                    }
-                    onChange={(event) => {
-                      const altText = event.target.value;
-                      if (activeTab === 'base') {
-                        setMedia((current) =>
-                          current.map((item) => (item.id === row.id ? { ...item, alt_text: altText } : item)),
-                        );
-                        void handpostApi.updateMediaAlt({ mediaId: row.id, altText });
-                      } else setOption(activeTab, `alt:${row.id}`, altText);
-                    }}
-                  />
+            <div className="compose__section" role="group" aria-labelledby="compose-media-label">
+              <p id="compose-media-label" className="compose__label">
+                Media · {media.length} of {mediaMax}
+              </p>
+              {media.length === 0 ? (
+                <button
+                  type="button"
+                  className="media-drop"
+                  disabled={busy}
+                  onClick={() => void perform(attach)}
+                >
+                  <ImagePlus size={18} aria-hidden="true" />
+                  <span>Add media</span>
+                  <small>or drop and paste files anywhere on this screen</small>
+                </button>
+              ) : (
+                <div className="media-strip">
+                  <div className="media-list">
+                    {media.map((row) => (
+                      <div className="media-tile" key={row.id}>
+                        <span className="media-tile__thumb" aria-hidden="true">
+                          {row.kind === 'video' ? <Film size={20} /> : <ImageIcon size={20} />}
+                        </span>
+                        <span className="media-tile__info">
+                          <code className="media-tile__name">
+                            {fileName(row.path)} <span>{mediaFacts(row)}</span>
+                          </code>
+                          <input
+                            className="hp-input"
+                            aria-label={`Alt text for ${fileName(row.path)}`}
+                            value={
+                              activeTab === 'base'
+                                ? (row.alt_text ?? '')
+                                : String(activeOptions[`alt:${row.id}`] ?? row.alt_text ?? '')
+                            }
+                            placeholder={
+                              activeTab === 'base'
+                                ? 'Alt text'
+                                : `${capabilities[activeTab].label} alt-text override`
+                            }
+                            onChange={(event) => {
+                              const altText = event.target.value;
+                              if (activeTab === 'base') {
+                                setMedia((current) =>
+                                  current.map((item) =>
+                                    item.id === row.id ? { ...item, alt_text: altText } : item,
+                                  ),
+                                );
+                                void handpostApi.updateMediaAlt({ mediaId: row.id, altText });
+                              } else setOption(activeTab, `alt:${row.id}`, altText);
+                            }}
+                          />
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    className="media-add"
+                    aria-label="Add media"
+                    disabled={busy || media.length >= mediaMax}
+                    onClick={() => void perform(attach)}
+                  >
+                    <Plus size={16} aria-hidden="true" />
+                    <span aria-hidden="true">Add</span>
+                  </button>
                 </div>
-              ))}
-              <button
-                type="button"
-                className="media-add"
-                disabled={busy}
-                onClick={() => void perform(attach)}
-              >
-                <ImagePlus size={18} aria-hidden="true" />
-                <span>Add media</span>
-              </button>
+              )}
             </div>
-            {activeTab !== 'base' && (
-              <label className="hp-field">
-                <span>First comment</span>
-                <input
-                  value={comments[activeTab] ?? ''}
-                  onChange={(event) =>
-                    setComments((value) => ({ ...value, [activeTab]: event.target.value }))
-                  }
-                  placeholder="Optional — posted as the first reply after the post is verified"
-                />
-              </label>
+            {commentPlatforms.length > 0 && (
+              <div className="compose__section compose__comments">
+                {commentPlatforms.map((platform) => (
+                  <label className="hp-field" key={platform}>
+                    <span className="compose__label compose__label--badge">
+                      <PlatformBadge platform={platform} size="s" />
+                      First comment
+                      {commentPlatforms.length > 1 || activeTab === 'base' ? (
+                        <span className="sr-only"> on {capabilities[platform].label}</span>
+                      ) : null}
+                    </span>
+                    <input
+                      value={comments[platform] ?? ''}
+                      onChange={(event) =>
+                        setComments((value) => ({ ...value, [platform]: event.target.value }))
+                      }
+                      placeholder="Optional — posted as the first reply after the post is verified"
+                    />
+                  </label>
+                ))}
+              </div>
             )}
             {platformOptionEditor}
             {templateKeys.length > 0 && (
@@ -678,51 +772,49 @@ export function Composer({
             )}
           </div>
           <footer className="schedule-bar">
-            <Segmented<ScheduleMode>
-              label="When"
-              value={scheduleMode}
-              onChange={setScheduleMode}
-              options={[
-                { value: 'slot', label: 'Next free slot' },
-                { value: 'exact', label: 'Exact time' },
-                { value: 'now', label: 'Post now' },
-              ]}
-            />
-            {scheduleMode === 'exact' && (
-              <label className="hp-field schedule-bar__date">
-                <span className="sr-only">Publish at</span>
-                <input
-                  type="datetime-local"
-                  value={scheduledAt}
-                  onChange={(event) => setScheduledAt(event.target.value)}
-                />
-              </label>
-            )}
-            <code className="schedule-bar__zone">
-              {timeZone} · {JITTER_NOTE}
-            </code>
-            <span className="schedule-bar__spacer" />
-            <Button
-              kind="ghost"
-              icon={Save}
-              disabled={busy}
-              onClick={() => void perform(() => save('draft'))}
-            >
-              Save draft
-            </Button>
-            {scheduleMode !== 'slot' && (
-              <Button icon={Timer} disabled={busy || hasErrors} onClick={() => void perform(addToQueue)}>
-                Add to queue
+            <div className="schedule-bar__when">
+              <Segmented<ScheduleMode>
+                label="When"
+                value={scheduleMode}
+                onChange={setScheduleMode}
+                options={[
+                  { value: 'slot', label: 'Next free slot' },
+                  { value: 'exact', label: 'Exact time' },
+                  { value: 'now', label: 'Post now' },
+                ]}
+              />
+              {scheduleMode === 'exact' && (
+                <label className="hp-field schedule-bar__date">
+                  <span className="sr-only">Publish at</span>
+                  <input
+                    type="datetime-local"
+                    value={scheduledAt}
+                    onChange={(event) => setScheduledAt(event.target.value)}
+                  />
+                </label>
+              )}
+              <code className="schedule-bar__zone">
+                {timeZone} · {JITTER_NOTE.replace(' ', '')}
+              </code>
+            </div>
+            <div className="schedule-bar__actions">
+              <Button kind="ghost" disabled={busy} onClick={() => void perform(() => save('draft'))}>
+                Save draft
               </Button>
-            )}
-            <Button
-              kind="primary"
-              icon={scheduleMode === 'now' ? Send : CalendarCheck}
-              disabled={busy || hasErrors}
-              onClick={() => void runSchedule()}
-            >
-              {scheduleLabel}
-            </Button>
+              {scheduleMode !== 'slot' && (
+                <Button icon={Clock3} disabled={busy || hasErrors} onClick={() => void perform(addToQueue)}>
+                  Add to queue
+                </Button>
+              )}
+              <Button
+                kind="primary"
+                icon={scheduleMode === 'slot' ? Clock3 : Send}
+                disabled={busy || hasErrors}
+                onClick={() => void runSchedule()}
+              >
+                {scheduleLabel}
+              </Button>
+            </div>
           </footer>
           {message && (
             <p
@@ -734,7 +826,7 @@ export function Composer({
           )}
         </section>
         <aside className="split__side previews" aria-label="Live previews">
-          <p className="hp-section-label">Live previews · {selected.length}</p>
+          <p className="hp-section-label">Live preview</p>
           {selected.length === 0 ? (
             <div className="hp-card">
               <EmptyState>Select a platform to preview the post.</EmptyState>
@@ -743,14 +835,30 @@ export function Composer({
             selected.map((platform) => {
               const body = overrides[platform] ?? text;
               const fold = platform === 'linkedin' && body.length > 210;
+              const account = accounts.find((row) => row.platform === platform);
+              const name = account?.display_name?.trim() || 'Your account';
+              const notes = [
+                platform === 'x' && /https?:\/\//.test(body) ? 'URLs count as 23' : '',
+                media.length && media.every((row) => row.alt_text) ? 'alt text attached' : '',
+                fold ? '…see more appears after 210 characters' : '',
+              ].filter(Boolean);
               return (
-                <article className="hp-card preview" key={platform}>
+                <article
+                  className="hp-card preview"
+                  key={platform}
+                  aria-label={`${capabilities[platform].label} preview`}
+                >
                   <header className="preview__head">
-                    <PlatformBadge platform={platform} />
+                    <span className="preview__avatar" aria-hidden="true">
+                      {name.slice(0, 1).toUpperCase()}
+                    </span>
                     <div>
-                      <strong>Your account</strong>
-                      <small className="muted">{capabilities[platform].label} · now</small>
+                      <strong>{name}</strong>
+                      <small className="muted">
+                        {account?.handle ?? capabilities[platform].label} · {previewWhen}
+                      </small>
                     </div>
+                    <PlatformBadge platform={platform} size="s" />
                   </header>
                   <p className="preview__text">
                     {body ? (
@@ -767,8 +875,12 @@ export function Composer({
                     )}
                   </p>
                   {media.length > 0 && (
-                    <div className={`preview__media${platform === 'x' ? ' preview__media--x' : ''}`}>
-                      {media.length} {media.length === 1 ? 'attachment' : 'attachments'}
+                    <div
+                      className={`preview__media${platform === 'x' ? ' preview__media--x' : ''}`}
+                      role="img"
+                      aria-label={`${media.length} ${media.length === 1 ? 'attachment' : 'attachments'}`}
+                    >
+                      <ImageIcon size={22} aria-hidden="true" />
                     </div>
                   )}
                   {decodeThreadParts(platformOptions[platform]?.threadParts).map((part, index) => (
@@ -776,6 +888,7 @@ export function Composer({
                       {index + 2}. {part}
                     </p>
                   ))}
+                  {notes.length > 0 && <p className="preview__note">{notes.join(' · ')}</p>}
                 </article>
               );
             })

@@ -27,6 +27,8 @@ async function shootInbox(browser) {
         deviceScaleFactor: 2,
         colorScheme,
         reducedMotion: 'reduce',
+        // The Figma frames use day-month dates and a 24-hour clock.
+        locale: 'en-GB',
       });
       const page = await context.newPage();
       await page.goto(`http://127.0.0.1:${port}/#/inbox`, { waitUntil: 'networkidle' });

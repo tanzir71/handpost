@@ -166,3 +166,12 @@ export function postWarnings(platform: PlatformId, post: RenderedPost): string[]
     warnings.push('Instagram will crop media outside 4:5–1.91:1');
   return warnings;
 }
+
+/** Platforms whose adapter posts a first comment once the post is verified (`comment` in adapters/configs.ts). */
+export const FIRST_COMMENT_PLATFORMS: readonly PlatformId[] = [
+  'x',
+  'linkedin',
+  'threads',
+  'facebook',
+  'instagram',
+];

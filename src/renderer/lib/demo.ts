@@ -467,6 +467,7 @@ export function createDemoApi(): HandpostApi {
     ],
     cancelTarget: async () => {},
     publishNow: async () => {},
+    reverify: async () => 'unverified' as const,
     appInfo: async () => info,
     browserInfo: async () => ({
       channel: 'chrome',

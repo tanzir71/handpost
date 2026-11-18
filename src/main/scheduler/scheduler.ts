@@ -107,7 +107,15 @@ export class Scheduler {
     await this.tick(now);
   }
 
+  /** Queue → Pause publishing: while paused nothing starts; posts keep their times. */
+  isPaused(): boolean {
+    return (
+      this.db.prepare("SELECT value FROM settings WHERE key='publishing.paused'").pluck().get() === 'true'
+    );
+  }
+
   async tick(now = new Date()) {
+    if (this.isPaused()) return;
     const rows = this.db
       .prepare(
         "SELECT t.*,p.base_text,a.platform,a.profile_dir,a.profile_url,a.handle FROM post_targets t JOIN posts p ON p.id=t.post_id JOIN accounts a ON a.id=t.account_id WHERE t.status='scheduled' AND t.jittered_at_utc<=? ORDER BY t.jittered_at_utc",
@@ -352,6 +360,57 @@ export class Scheduler {
         `${row.platform}: ${String(e.message ?? error)}`,
       );
     }
+  }
+
+  /**
+   * Queue → Retry verify. An `unverified` post was submitted but not found on the profile; publishing it again could
+   * post it twice, so this only repeats the check on the owner's own profile. It never opens the composer.
+   */
+  async reverify(targetId: number): Promise<'published' | 'unverified'> {
+    return (await this.queue.add(async () => {
+      const row = this.db
+        .prepare(
+          "SELECT t.*,p.base_text,a.platform,a.profile_dir,a.profile_url,a.handle FROM post_targets t JOIN posts p ON p.id=t.post_id JOIN accounts a ON a.id=t.account_id WHERE t.id=? AND t.status='unverified'",
+        )
+        .get(targetId) as DueRow | undefined;
+      if (!row) throw new Error('Only unverified posts can be checked again');
+      if (this.breaker.isOpen(row.platform))
+        throw new Error('This platform is frozen after a detection event; check the post by hand');
+      if (row.platform !== 'mock' && this.options.browserReady && !this.options.browserReady())
+        throw new Error('Install Google Chrome (or Microsoft Edge) first');
+      const adapter = this.resolveAdapter(row.platform);
+      const post = this.render(row);
+      const started = new Date().toISOString();
+      const headless = row.platform === 'mock';
+      try {
+        const ctx = await this.engine.context(row.platform, { headless, background: !headless });
+        const page = ctx.pages()[0] ?? (await ctx.newPage());
+        const reporter = new StepReporter(page, this.artifactDir);
+        const session = await adapter.checkSession(ctx);
+        if (session !== 'ok') throw new Error('Log in again from Accounts, then retry the check');
+        const proof = await reporter.step('verify on own profile', () => adapter.verify(ctx, post));
+        const status = proof.found ? 'published' : 'unverified';
+        this.db
+          .prepare('UPDATE post_targets SET status=?,published_url=? WHERE id=?')
+          .run(status, proof.url ?? null, row.id);
+        this.db
+          .prepare(
+            'INSERT INTO publish_attempts(target_id,started_at,finished_at,outcome,step_log_json,screenshot_path) VALUES (?,?,?,?,?,?)',
+          )
+          .run(
+            row.id,
+            started,
+            new Date().toISOString(),
+            status,
+            JSON.stringify(reporter.logs),
+            proof.screenshotPath ?? null,
+          );
+        this.recalculatePost(row.post_id);
+        return status;
+      } finally {
+        await this.engine.close(row.platform).catch(() => undefined);
+      }
+    }))!;
   }
 
   /** No browser to drive: the target waits for the owner instead of failing (H6). */

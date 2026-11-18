@@ -67,8 +67,12 @@ function updateTray(db: HandpostDatabase) {
     .all() as string[])
     breaker.isOpen(platform);
   const danger = Boolean(db.prepare("SELECT 1 FROM accounts WHERE status='frozen' LIMIT 1").get());
+  const paused =
+    db.prepare("SELECT value FROM settings WHERE key='publishing.paused'").pluck().get() === 'true';
   tray?.setImage(trayImage(danger));
-  tray?.setToolTip(danger ? 'Handpost — automation frozen' : 'Handpost scheduler');
+  tray?.setToolTip(
+    danger ? 'Handpost — automation frozen' : paused ? 'Handpost — publishing paused' : 'Handpost scheduler',
+  );
 }
 async function boot() {
   const dataDir = app.getPath('userData');
@@ -169,16 +173,22 @@ async function boot() {
     engine,
     dataDir,
     inbox,
-    (key) => {
+    (key, value) => {
       if (key.startsWith('git.')) {
         gitSource.configure(gitConfig());
         void gitCycle();
+      }
+      if (key === 'publishing.paused') {
+        updateTray(db);
+        // On resume, posts more than two hours late wait for a look (the same rule as after the app was closed).
+        if (value === 'false') void activeScheduler.handleOverdue();
       }
     },
     {
       git: { health: () => gitSource.health(), syncNow: gitCycle },
       browserInfo: browser,
       rehearse: (platform, input) => activeScheduler.rehearse(platform, input),
+      reverify: (targetId) => activeScheduler.reverify(targetId),
     },
   );
   scheduler.start();

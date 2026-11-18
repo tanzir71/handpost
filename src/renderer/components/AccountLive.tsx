@@ -1,120 +1,102 @@
-import { useEffect, useState } from 'react';
-import { Clapperboard, Globe, Link2 } from 'lucide-react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Globe, Monitor } from 'lucide-react';
 import type { BrowserInfoView, RehearsalView } from '../../shared/api';
 import type { PlatformId } from '../../shared/types';
 import { handpostApi } from '../lib/api';
 import { shortPath } from '../lib/format';
 import { Button, EmptyState, StatusPill, StepLog } from '../ui';
 
-/** Rehearse + "Your profile URL" for one account card (H6). */
-export function AccountLive({
+/** “Your profile URL” for one account card (H6): verification opens it to find each new post. */
+export function ProfileUrlForm({
   platform,
-  connected,
   profileUrl,
-  onChanged,
+  onSaved,
 }: {
   platform: PlatformId;
-  connected: boolean;
   profileUrl: string | null | undefined;
-  onChanged: () => void;
+  onSaved: () => void;
 }) {
-  const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<RehearsalView | null>(null);
-  const [error, setError] = useState('');
   const [url, setUrl] = useState(profileUrl ?? '');
-  const [editing, setEditing] = useState(false);
-  const needsUrl = connected && !profileUrl;
-  const rehearse = async () => {
-    setBusy(true);
-    setError('');
-    try {
-      setResult(await handpostApi.rehearse({ platform }));
-    } catch (value) {
-      setError(value instanceof Error ? value.message : String(value));
-    } finally {
-      setBusy(false);
-    }
-  };
+  const [error, setError] = useState('');
   return (
-    <div className="account-live">
-      {(needsUrl || editing) && (
-        <form
-          className="profile-url"
-          onSubmit={async (event) => {
-            event.preventDefault();
-            try {
-              await handpostApi.setProfileUrl({ platform, url });
-              setError('');
-              setEditing(false);
-              onChanged();
-            } catch (value) {
-              setError(value instanceof Error ? value.message : String(value));
-            }
-          }}
-        >
-          <label className="hp-field">
-            <span>Your profile URL</span>
-            <input
-              type="url"
-              value={url}
-              placeholder="https://…"
-              onChange={(event) => setUrl(event.target.value)}
-              aria-describedby={`profile-hint-${platform}`}
-            />
-          </label>
-          <small id={`profile-hint-${platform}`} className="muted">
-            Handpost opens it to find each new post and save its link.
-            {platform === 'facebook' ? ' For a Page, use the Page’s address.' : ''}
-          </small>
-          <Button size="s" kind="primary" type="submit" disabled={!url}>
-            Save profile URL
-          </Button>
-        </form>
-      )}
-      {!needsUrl && !editing && profileUrl && (
-        <button
-          type="button"
-          className="link-button t-mono-s"
-          onClick={() => setEditing(true)}
-          title="Change profile URL"
-        >
-          <Link2 size={12} aria-hidden="true" /> {profileUrl.replace(/^https:\/\//, '')}
-        </button>
-      )}
-      <div className="account-live__actions">
-        <Button size="s" icon={Clapperboard} disabled={!connected || busy} onClick={() => void rehearse()}>
-          {busy ? 'Rehearsing…' : 'Rehearse'}
-        </Button>
-      </div>
+    <form
+      className="profile-url"
+      onSubmit={async (event) => {
+        event.preventDefault();
+        try {
+          await handpostApi.setProfileUrl({ platform, url });
+          setError('');
+          onSaved();
+        } catch (value) {
+          setError(value instanceof Error ? value.message : String(value));
+        }
+      }}
+    >
+      <label className="hp-field">
+        <span>Your profile URL</span>
+        <input
+          type="url"
+          value={url}
+          placeholder="https://…"
+          onChange={(event) => setUrl(event.target.value)}
+          aria-describedby={`profile-hint-${platform}`}
+        />
+      </label>
+      <small id={`profile-hint-${platform}`} className="muted">
+        Handpost opens it to find each new post and save its link.
+        {platform === 'facebook' ? ' For a Page, use the Page’s address.' : ''}
+      </small>
+      <Button size="s" kind="primary" type="submit" disabled={!url}>
+        Save profile URL
+      </Button>
       {error && (
         <p role="alert" className="hp-callout hp-callout--danger">
           {error}
         </p>
       )}
-      {result && (
-        <div className="rehearsal-result" role="status">
-          <p>
-            <StatusPill status={result.outcome === 'rehearsal' ? 'published' : 'failed'}>
-              {result.outcome === 'rehearsal' ? 'Rehearsal passed' : result.outcome.replace('_', ' ')}
-            </StatusPill>{' '}
-            <span className="t-body-s secondary-text">
-              {result.outcome === 'rehearsal'
-                ? 'Filled, screenshotted and discarded — nothing was posted.'
-                : result.error}
-            </span>
-          </p>
-          {result.steps.length > 0 && <StepLog steps={result.steps} />}
-          {result.screenshot && (
-            <img src={result.screenshot} alt={`${platform} composer filled during the rehearsal`} />
-          )}
-        </div>
+    </form>
+  );
+}
+
+/** What a rehearsal did: filled, screenshotted and discarded — or where it stopped. */
+export function RehearsalResult({
+  platform,
+  result,
+  error,
+}: {
+  platform: PlatformId;
+  result?: RehearsalView | undefined;
+  error?: string | undefined;
+}) {
+  if (error)
+    return (
+      <p role="alert" className="hp-callout hp-callout--danger">
+        {error}
+      </p>
+    );
+  if (!result) return null;
+  return (
+    <div className="rehearsal-result" role="status">
+      <p>
+        <StatusPill status={result.outcome === 'rehearsal' ? 'published' : 'failed'}>
+          {result.outcome === 'rehearsal' ? 'Rehearsal passed' : result.outcome.replace('_', ' ')}
+        </StatusPill>{' '}
+        <span className="t-body-s secondary-text">
+          {result.outcome === 'rehearsal'
+            ? 'Filled, screenshotted and discarded — nothing was posted.'
+            : result.error}
+        </span>
+      </p>
+      {result.steps.length > 0 && <StepLog steps={result.steps} />}
+      {result.screenshot && (
+        <img src={result.screenshot} alt={`${platform} composer filled during the rehearsal`} />
       )}
     </div>
   );
 }
 
 /** Accounts footer: which browser Handpost found, or how to get one. */
-export function BrowserFooter() {
+export function BrowserFooter({ extra }: { extra?: ReactNode }) {
   const [info, setInfo] = useState<BrowserInfoView | null>(null);
   useEffect(() => {
     let alive = true;
@@ -123,15 +105,14 @@ export function BrowserFooter() {
         const value = await handpostApi.browserInfo();
         if (alive) setInfo(value);
       } catch {
-        // Without the main process (tests, demo without the call) there is simply no footer.
+        // Without the main process (tests, demo without the call) there is simply no browser line.
       }
     })();
     return () => {
       alive = false;
     };
   }, []);
-  if (!info) return null;
-  if (!info.found)
+  if (info && !info.found)
     return (
       <div className="hp-card">
         <EmptyState
@@ -149,11 +130,20 @@ export function BrowserFooter() {
         </EmptyState>
       </div>
     );
+  if (!info && !extra) return null;
+  const major = info?.version?.split('.')[0];
   return (
-    <p className="accounts-footer t-mono-s secondary-text">
-      {info.label}
-      {info.version ? ` ${info.version}` : ''}
-      {info.path ? ` · ${shortPath(info.path)}` : ''} · profiles in {shortPath(info.profiles)}
+    <p className="accounts-footer t-body-s secondary-text">
+      <Monitor size={14} aria-hidden="true" />
+      <span>
+        {info && (
+          <>
+            {info.label.replace('Google ', '')}
+            {major ? ` ${major}` : ''} found · profiles stored in {shortPath(info.profiles)}
+          </>
+        )}
+        {extra}
+      </span>
     </p>
   );
 }

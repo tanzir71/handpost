@@ -41,7 +41,9 @@ describe('Composer', () => {
         onSaved={() => {}}
       />,
     );
-    fireEvent.change(screen.getByLabelText('Draft'), { target: { value: '7' } });
+    // Figma 6:183: drafts open from a menu next to “Use template”.
+    fireEvent.click(screen.getByRole('button', { name: 'Open draft' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /^(Saved draft|Short description)$/ }));
     expect((screen.getByLabelText('Post text') as HTMLTextAreaElement).value).toBe('Saved draft');
     expect((screen.getByPlaceholderText('Alt text') as HTMLInputElement).value).toBe('Saved alt');
   });
@@ -60,9 +62,11 @@ describe('Composer', () => {
         onSaved={() => {}}
       />,
     );
-    fireEvent.change(screen.getByLabelText('Draft'), { target: { value: '7' } });
+    // Figma 6:183: drafts open from a menu next to “Use template”.
+    fireEvent.click(screen.getByRole('button', { name: 'Open draft' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /^(Saved draft|Short description)$/ }));
     fireEvent.click(screen.getByRole('button', { name: 'YouTube Shorts' }));
-    fireEvent.click(screen.getByRole('tab', { name: 'YouTube Shorts' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'YouTube Shorts override' }));
     fireEvent.change(screen.getByLabelText('Short title'), { target: { value: 'My short' } });
     fireEvent.change(screen.getByLabelText('Audience'), { target: { value: 'false' } });
     fireEvent.change(screen.getByLabelText('Visibility'), { target: { value: 'unlisted' } });
@@ -83,7 +87,8 @@ describe('Composer', () => {
         onSaved={() => {}}
       />,
     );
-    fireEvent.change(screen.getByLabelText('Template'), { target: { value: '3' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Use template' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Greeting' }));
     fireEvent.change(screen.getByLabelText('name'), { target: { value: 'Ada' } });
     expect((screen.getByLabelText('Post text') as HTMLTextAreaElement).value).toBe('Hello Ada');
   });
@@ -110,7 +115,7 @@ describe('Composer', () => {
 describe('X thread composer', () => {
   it('persists continuation posts with the X target', async () => {
     render(<Composer accounts={[{ id: 1, platform: 'x' }]} templates={[]} onSaved={() => {}} />);
-    fireEvent.click(screen.getByRole('tab', { name: 'X' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'X override' }));
     fireEvent.change(screen.getByLabelText(/Continuation posts/), {
       target: { value: 'Second post\n---\nThird post' },
     });

@@ -345,8 +345,10 @@ describe('Accounts live readiness', () => {
         onChanged={() => {}}
       />,
     );
+    // Only connected platforms offer Rehearse; a logged-out one offers to log in instead (Figma 6:346).
     const buttons = screen.getAllByRole('button', { name: 'Rehearse' });
-    expect((buttons[1] as HTMLButtonElement).disabled).toBe(true);
+    expect(buttons).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Log in in Chrome' })).toBeTruthy();
     fireEvent.click(buttons[0]!);
     expect(await screen.findByText('Rehearsal passed')).toBeTruthy();
     expect(mockApi.rehearse).toHaveBeenCalledWith({ platform: 'x' });

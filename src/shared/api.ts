@@ -119,6 +119,8 @@ export interface HandpostApi {
   breakers(): Promise<BreakerRow[]>;
   cancelTarget(input: { targetId: number }): Promise<void>;
   publishNow(input: { targetId: number }): Promise<void>;
+  /** Checks the profile again for an `unverified` post. Never submits anything. */
+  reverify(input: { targetId: number }): Promise<'published' | 'unverified'>;
   appInfo(): Promise<AppInfo>;
   browserInfo(): Promise<BrowserInfoView>;
   setProfileUrl(input: {

@@ -28,7 +28,7 @@ export function NavItem({
       {count ? (
         <span
           className={`hp-nav-item__count${attention ? ' hp-nav-item__count--attention' : ''}`}
-          aria-label={`${count} need${count === 1 ? 's' : ''} attention`}
+          aria-label={`${count} waiting`}
         >
           {count}
         </span>

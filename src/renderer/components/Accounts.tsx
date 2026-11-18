@@ -1,12 +1,14 @@
-import { useState, type ReactNode } from 'react';
-import { ExternalLink, LogIn, Plus, ShieldCheck, SlidersHorizontal, Trash2, Unlock } from 'lucide-react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { ExternalLink, Eye, Plus, RefreshCw, ShieldCheck, TriangleAlert, Trash2 } from 'lucide-react';
+import type { RehearsalView } from '../../shared/api';
 import { capabilities } from '../../shared/capabilities';
+import type { BreakerRow } from '../../shared/inbox-types';
 import type { AccountRow, Fields, SettingRow, SlotRow } from '../../shared/rows';
 import type { PlatformId } from '../../shared/types';
 import { handpostApi } from '../lib/api';
-import { formatWhen } from '../lib/format';
+import { ago, formatDayTime } from '../lib/format';
 import { summarizeSlots, WEEKDAYS } from '../lib/slots';
-import { AccountLive, BrowserFooter } from './AccountLive';
+import { BrowserFooter, ProfileUrlForm, RehearsalResult } from './AccountLive';
 import { Button, Card, ConfirmPopover, EmptyState, Modal, PlatformBadge, StatusPill, Toggle } from '../ui';
 
 export interface AccountsProps {
@@ -16,19 +18,107 @@ export interface AccountsProps {
   slots: Array<Fields<SlotRow, 'account_id' | 'weekday' | 'time_local'>>;
   settings: SettingRow[];
   onChanged: () => void;
-  /** Extra content per card (H6: Rehearse) and the footer line (Chrome detection). */
-  renderExtra?: (account: AccountsProps['accounts'][number]) => ReactNode;
+  /** Queued targets stopped at `needs_login`, per platform (“1 queued post is waiting”). */
+  waiting?: Partial<Record<string, number>>;
+  /** Replaces the footer line (Chrome detection). */
   footer?: ReactNode;
+  /** Opens History (Instagram → View evidence). */
+  onViewEvidence?: (platform: PlatformId) => void;
 }
 
 const SAFE_HEADLESS = new Set(['bluesky']);
+/** Figma 6:346 shows these six; the others wait under “Add platform” until they are connected. */
+const CORE: PlatformId[] = ['x', 'linkedin', 'bluesky', 'threads', 'instagram', 'tiktok'];
+/** What a platform takes, for cards that are not connected yet (from capabilities + adapter configs). */
+const POSTS_NOTE: Record<PlatformId, string> = {
+  mock: 'Text, images and video',
+  x: 'Text, up to 4 images or a video · threads',
+  linkedin: 'Text, up to 9 images or a video',
+  bluesky: 'Text and up to 4 images',
+  threads: 'Text, up to 10 images or videos',
+  facebook: 'Page posts · text, images or video',
+  instagram: 'Images only · waits up to 5 min for processing',
+  tiktok: 'Video only · waits up to 5 min for processing',
+  youtube: 'One vertical video up to 60 s · waits up to 5 min for processing',
+  pinterest: 'One image or video with a title, link and board',
+};
+const gapMinutes = (platform: string) => (platform === 'instagram' ? 10 : 3);
+const isConnected = (status: string) => !['unknown', 'not_connected'].includes(status);
+
+type Rehearsal = { result?: RehearsalView; error?: string };
 
 /** Figma Accounts 6:346. */
-export function Accounts({ accounts, slots, settings, onChanged, renderExtra, footer }: AccountsProps) {
+export function Accounts({
+  accounts,
+  slots,
+  settings,
+  onChanged,
+  waiting = {},
+  footer,
+  onViewEvidence,
+}: AccountsProps) {
   const [editing, setEditing] = useState<AccountsProps['accounts'][number] | null>(null);
+  const [editingUrl, setEditingUrl] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [rehearsals, setRehearsals] = useState<Record<string, Rehearsal>>({});
+  const [summary, setSummary] = useState('');
+  const [breakers, setBreakers] = useState<BreakerRow[]>([]);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const rows = await handpostApi.breakers();
+        if (alive) setBreakers(rows ?? []);
+      } catch {
+        // No breaker details without the main process (tests); the card still says it is frozen.
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [accounts]);
   const setting = (key: string, fallback: string) =>
     settings.find((item) => item.key === key)?.value ?? fallback;
   const real = accounts.filter((account) => account.platform !== 'mock');
+  const visible = real.filter(
+    (account) => showAll || CORE.includes(account.platform as PlatformId) || isConnected(account.status),
+  );
+  const hidden = real.filter((account) => !visible.includes(account));
+  const ready = real.filter((account) => account.status === 'ok');
+
+  const rehearse = async (platform: PlatformId): Promise<RehearsalView | null> => {
+    setBusy(platform);
+    try {
+      const result = await handpostApi.rehearse({ platform });
+      if (result) setRehearsals((current) => ({ ...current, [platform]: { result } }));
+      return result;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setRehearsals((current) => ({ ...current, [platform]: { error: message } }));
+      return null;
+    } finally {
+      setBusy(null);
+    }
+  };
+  const rehearseAll = async () => {
+    setSummary('');
+    let passed = 0;
+    let ran = 0;
+    for (const account of ready) {
+      setBusy('all');
+      const result = await rehearse(account.platform as PlatformId);
+      if (result) ran++;
+      if (result?.outcome === 'rehearsal') passed++;
+    }
+    setBusy(null);
+    setSummary(
+      ran
+        ? `Rehearsed ${ran} platform${ran === 1 ? '' : 's'}: ${passed} passed${ran > passed ? `, ${ran - passed} need a look` : ''}. Nothing was posted.`
+        : 'Nothing was rehearsed.',
+    );
+  };
+
   return (
     <main className="screen">
       <header className="screen-header">
@@ -36,130 +126,205 @@ export function Accounts({ accounts, slots, settings, onChanged, renderExtra, fo
           <p className="eyebrow">Sessions</p>
           <h1 className="t-display-m">Accounts</h1>
           <p className="secondary-text">
-            You log in yourself, in Chrome. Handpost never sees or stores a password.
+            You log in yourself, in a real Chrome window. Handpost keeps only the browser profile — never your
+            password.
           </p>
+        </div>
+        <div className="screen-header__actions">
+          <Button icon={Eye} disabled={!ready.length || busy !== null} onClick={() => void rehearseAll()}>
+            {busy === 'all' ? 'Rehearsing…' : 'Rehearse all'}
+          </Button>
         </div>
       </header>
       <div className="hp-callout hp-callout--ink accounts-banner">
-        <ShieldCheck size={16} aria-hidden="true" />
-        <div>
+        <Eye size={16} aria-hidden="true" />
+        <p>
+          Rehearse fills the real composer, attaches media, takes a screenshot — and stops before Post. Run it
+          after a platform changes its UI.
+        </p>
+        <details className="rehearse-help">
+          <summary>Fingerprint check</summary>
           <p>
-            <strong>Rehearse</strong> fills a platform's real composer and stops before Post — the safe way to
-            check a platform after it changes its page. The filled composer is screenshotted, then discarded.
+            From a checkout of Handpost, <code>npm run fingerprint -- --chrome</code> opens your installed
+            Chrome with a throwaway profile and confirms it does not report automation (
+            <code>navigator.webdriver</code>, DevTools leaks). Run it once after installing or updating
+            Chrome.
           </p>
-          <details className="rehearse-help">
-            <summary>Check the browser fingerprint first</summary>
-            <p>
-              From a checkout of Handpost, <code>npm run fingerprint -- --chrome</code> opens your installed
-              Chrome with a throwaway profile and confirms it does not report automation (
-              <code>navigator.webdriver</code>, DevTools leaks). Run it once after installing or updating
-              Chrome.
-            </p>
-          </details>
-        </div>
+        </details>
       </div>
+      {summary && (
+        <p role="status" className="hp-callout hp-callout--ok">
+          {summary}
+        </p>
+      )}
       {real.length === 0 ? (
         <div className="hp-card">
           <EmptyState>No platforms are set up yet. Restart Handpost to create the account slots.</EmptyState>
         </div>
       ) : (
         <div className="account-grid">
-          {real.map((account) => {
+          {visible.map((account) => {
             const platform = account.platform as PlatformId;
+            const label = capabilities[platform].label;
             const own = slots.filter((slot) => slot.account_id === account.id);
             const frozen = account.status === 'frozen';
             const connected = account.status === 'ok';
+            const linked = isConnected(account.status);
+            const cap = Number(setting(`dailyCap:${platform}`, '10'));
+            const queued = waiting[platform] ?? 0;
+            const breaker = breakers.find((row) => row.platform === platform);
+            const lastEvent = breaker?.events[breaker.events.length - 1];
+            const rehearsal = rehearsals[platform];
+            const askUrl = (connected && !account.profile_url) || editingUrl === platform;
+            const connect = async () => {
+              await handpostApi.connect({ platform });
+              onChanged();
+            };
             return (
-              <Card key={account.id} className="account-card">
+              <Card key={account.id} className={`account-card${frozen ? ' account-card--frozen' : ''}`}>
                 <div className="account-card__head">
                   <PlatformBadge platform={platform} size="l" />
                   <div>
-                    <h2 className="t-heading-s">{capabilities[platform].label}</h2>
-                    <p className="t-mono-s secondary-text">
-                      {account.handle ?? (connected ? 'handle not captured yet' : '—')}
-                    </p>
+                    <h2 className="t-heading-s">{label}</h2>
+                    {linked && account.profile_url ? (
+                      <button
+                        type="button"
+                        className="link-button t-mono-s"
+                        title="Change profile URL"
+                        onClick={() => setEditingUrl(editingUrl === platform ? null : platform)}
+                      >
+                        {account.handle ?? account.profile_url.replace(/^https:\/\//, '')}
+                      </button>
+                    ) : (
+                      <p className="t-mono-s secondary-text">
+                        {linked ? (account.handle ?? 'handle not captured yet') : 'not connected'}
+                      </p>
+                    )}
                   </div>
                   <StatusPill status={account.status} />
                 </div>
                 {account.status === 'needs_login' && (
-                  <p className="hp-callout hp-callout--warn">
-                    Logged out. Queued posts wait until you log in again.
+                  <p className="hp-callout hp-callout--warn account-card__note">
+                    <TriangleAlert size={14} aria-hidden="true" />
+                    <span>
+                      {queued
+                        ? `Session expired. ${queued} queued post${queued === 1 ? ' is' : 's are'} waiting — log in and ${queued === 1 ? 'it resumes' : 'they resume'}.`
+                        : 'Session expired. Log in and queued posts resume.'}
+                    </span>
                   </p>
                 )}
                 {account.status === 'challenged' && (
-                  <p className="hp-callout hp-callout--warn">
-                    The platform asked for a check. Open it and complete it yourself.
+                  <p className="hp-callout hp-callout--warn account-card__note">
+                    <TriangleAlert size={14} aria-hidden="true" />
+                    <span>The platform asked for a check. Open it and complete it yourself.</span>
                   </p>
                 )}
                 {frozen && (
-                  <p className="hp-callout hp-callout--danger">
-                    Paused after a detection event. Posts for this platform move to manual handling.
+                  <p className="hp-callout hp-callout--danger account-card__note">
+                    <TriangleAlert size={14} aria-hidden="true" />
+                    <span>
+                      {breaker?.manual
+                        ? 'A second detection event in 7 days. Automation stays off until you re-enable it.'
+                        : `Detection event${lastEvent ? ` ${formatDayTime(lastEvent)}` : ''}. Frozen for 24 h; a second event in 7 days needs manual re-enable.`}
+                    </span>
                   </p>
                 )}
-                <dl className="account-card__meta">
-                  <dt>Last verified</dt>
-                  <dd>
-                    {account.last_checked_at
-                      ? formatWhen(account.last_checked_at, { withDay: true })
-                      : 'Never'}
-                  </dd>
-                  <dt>Queue slots</dt>
-                  <dd>{summarizeSlots(own)}</dd>
-                  <dt>Daily cap</dt>
-                  <dd>{setting(`dailyCap:${platform}`, '10')} posts</dd>
-                </dl>
-                {renderExtra ? (
-                  renderExtra(account)
+                {linked ? (
+                  <dl className="account-card__meta">
+                    <dt>Last verified</dt>
+                    <dd>{account.last_checked_at ? ago(account.last_checked_at) : 'never'}</dd>
+                    <dt>Queue slots</dt>
+                    <dd>{summarizeSlots(own)}</dd>
+                    <dt>Daily cap</dt>
+                    <dd>
+                      {cap} post{cap === 1 ? '' : 's'} · {gapMinutes(platform)} min gap
+                    </dd>
+                  </dl>
                 ) : (
-                  <AccountLive
+                  <dl className="account-card__meta">
+                    <dt>Posts</dt>
+                    <dd>{POSTS_NOTE[platform]}</dd>
+                  </dl>
+                )}
+                {askUrl && (
+                  <ProfileUrlForm
                     platform={platform}
-                    connected={connected}
                     profileUrl={account.profile_url}
-                    onChanged={onChanged}
+                    onSaved={() => {
+                      setEditingUrl(null);
+                      onChanged();
+                    }}
                   />
                 )}
                 <div className="account-card__actions">
                   {frozen ? (
-                    <ConfirmPopover
-                      message="Re-enable automation early? The platform flagged recent activity; posting again soon raises the risk."
-                      confirmLabel="Re-enable"
-                      onConfirm={async () => {
-                        await handpostApi.reenable(platform);
-                        onChanged();
-                      }}
-                      trigger={(open) => (
-                        <Button kind="danger" size="s" icon={Unlock} onClick={open}>
-                          Re-enable early
+                    <>
+                      <ConfirmPopover
+                        message="Re-enable automation early? The platform flagged recent activity; posting again soon raises the risk."
+                        confirmLabel="Re-enable"
+                        onConfirm={async () => {
+                          await handpostApi.reenable(platform);
+                          onChanged();
+                        }}
+                        trigger={(open) => (
+                          <Button kind="danger" size="s" icon={ShieldCheck} onClick={open}>
+                            Re-enable early
+                          </Button>
+                        )}
+                      />
+                      {onViewEvidence && (
+                        <Button kind="ghost" size="s" onClick={() => onViewEvidence(platform)}>
+                          View evidence
                         </Button>
                       )}
-                    />
+                    </>
+                  ) : connected ? (
+                    <>
+                      <Button
+                        size="s"
+                        icon={Eye}
+                        disabled={busy !== null}
+                        onClick={() => void rehearse(platform)}
+                      >
+                        {busy === platform ? 'Rehearsing…' : 'Rehearse'}
+                      </Button>
+                      <Button kind="ghost" size="s" icon={RefreshCw} onClick={() => void connect()}>
+                        Reconnect
+                      </Button>
+                    </>
                   ) : (
-                    <Button
-                      size="s"
-                      kind={connected ? 'secondary' : 'primary'}
-                      icon={connected ? ExternalLink : LogIn}
-                      onClick={async () => {
-                        await handpostApi.connect({ platform });
-                        onChanged();
-                      }}
-                    >
-                      {connected
-                        ? 'Reconnect'
-                        : account.status === 'needs_login'
-                          ? 'Log in in Chrome'
-                          : 'Connect in Chrome'}
+                    <Button kind="primary" size="s" icon={ExternalLink} onClick={() => void connect()}>
+                      {account.status === 'needs_login' ? 'Log in in Chrome' : 'Connect in Chrome'}
                     </Button>
                   )}
-                  <Button size="s" icon={SlidersHorizontal} onClick={() => setEditing(account)}>
-                    Slots &amp; caps
-                  </Button>
+                  {linked && !frozen && (
+                    <Button kind="ghost" size="s" onClick={() => setEditing(account)}>
+                      Slots &amp; caps
+                    </Button>
+                  )}
                 </div>
+                {rehearsal && <RehearsalResult platform={platform} {...rehearsal} />}
               </Card>
             );
           })}
         </div>
       )}
-      {footer ?? <BrowserFooter />}
+      {footer ?? (
+        <BrowserFooter
+          extra={
+            hidden.length > 0 && (
+              <>
+                {' · '}
+                {hidden.map((account) => capabilities[account.platform as PlatformId].label).join(', ')}{' '}
+                available under{' '}
+                <button type="button" className="link-button" onClick={() => setShowAll(true)}>
+                  Add platform
+                </button>
+              </>
+            )
+          }
+        />
+      )}
       {editing && (
         <SlotsModal
           platform={editing.platform as PlatformId}

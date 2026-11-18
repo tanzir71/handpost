@@ -49,7 +49,8 @@ These checks create real public posts. Run them manually; never put credentials 
 - [ ] Use the saved checkpoint fixture/test to confirm `suspected_detection` freezes the platform and moves queued work to manual handling.
 - [ ] Break a fixture selector locally and confirm one retry, `ui_drift`, screenshot, and sanitized `_drift` DOM snapshot.
 - [ ] Submit a known-invalid post and confirm an exact content error with no browser attempt.
-- [ ] Force an unverified submission and confirm the notification and manual fallback.
+- [ ] Force an unverified submission and confirm the notification and manual fallback; *Retry verify* must only revisit the profile (no second post).
+- [ ] Press *Pause publishing* on the Queue with a post due in a few minutes; confirm nothing opens until *Resume publishing*.
 - [ ] Temporarily start Handpost with `HANDPOST_BROWSER=chrome` on a machine without Chrome: due posts become `needs_attention` (`chrome_missing`) and Accounts shows **Install Google Chrome** instead of crashing.
 
 Record the date, platform, Handpost commit, result, and any permalink in a private owner log. Never commit live session artifacts.
